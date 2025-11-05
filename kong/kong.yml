@@ -1,0 +1,85 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  # --- User Service (protégé, bearer only) ---
+  - name: user-service
+    url: http://user-service:8000
+    routes:
+      - name: user-route
+        paths: ["/api/users", "/api/users/"]
+        strip_path: false
+        plugins:
+          - name: kong-openid-connect
+            config:
+              discovery: "${KC_ISSUER}/.well-known/openid-configuration"
+              client_id: "${KC_CLIENT_ID}"
+              client_secret: "${KC_CLIENT_SECRET}"
+              ssl_verify: false
+              bearer_only: true
+              realm: "kong"
+              scope: "openid profile email"
+              user_info_header_name: "X-Userinfo"     # base64 JSON userinfo
+              access_token_header_name: "X-Access-Token"
+              id_token_header_name: "X-Id-Token"
+
+  # --- Article Service ---
+  - name: article-service
+    url: http://article-service:8000
+    routes:
+      # Public GET
+      - name: article-public
+        paths: ["/api/articles", "/api/articles/"]
+        methods: ["GET"]
+        strip_path: false
+      # Ecriture protégée
+      - name: article-protected
+        paths: ["/api/articles", "/api/articles/"]
+        methods: ["POST", "PUT", "PATCH", "DELETE"]
+        strip_path: false
+        plugins:
+          - name: kong-openid-connect
+            config:
+              discovery: "${KC_ISSUER}/.well-known/openid-configuration"
+              client_id: "${KC_CLIENT_ID}"
+              client_secret: "${KC_CLIENT_SECRET}"
+              ssl_verify: false
+              bearer_only: true
+              realm: "kong"
+              scope: "openid profile email"
+              user_info_header_name: "X-Userinfo"
+              access_token_header_name: "X-Access-Token"
+              id_token_header_name: "X-Id-Token"
+
+# PLUGINS GLOBAUX
+plugins:
+  - name: cors
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+      headers: ["Accept", "Content-Type", "Authorization"]
+      credentials: true
+      max_age: 3600
+
+  - name: rate-limiting
+    config:
+      minute: 100
+      hour: 1000
+      policy: local
+
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true
+
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+      size_unit: megabytes
+
+  - name: response-ratelimiting
+    config:
+      limits:
+        default:
+          minute: 500
