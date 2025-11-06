@@ -6,6 +6,8 @@
       <sourceFolder url="file://$MODULE_DIR$/article-service/tests" isTestSource="true" packagePrefix="App\Tests\" />
       <sourceFolder url="file://$MODULE_DIR$/user-service/src" isTestSource="false" packagePrefix="App\" />
       <sourceFolder url="file://$MODULE_DIR$/user-service/tests" isTestSource="true" packagePrefix="App\Tests\" />
+      <sourceFolder url="file://$MODULE_DIR$/article_service/src" isTestSource="false" packagePrefix="App\" />
+      <sourceFolder url="file://$MODULE_DIR$/article_service/tests" isTestSource="true" packagePrefix="App\Tests\" />
       <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/api-platform/doctrine-common" />
       <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/api-platform/doctrine-orm" />
       <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/api-platform/documentation" />
