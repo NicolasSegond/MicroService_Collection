@@ -8,17 +8,18 @@
 
     #[ApiResource(operations: [
       new Get(
-        uriTemplate: 'articles/hello',
-        controller: HelloWorldController::class,
-        output: false,
-        read: false,    // IMPORTANT: ne passe pas par le provider/Doctrine
-        name: 'hello_world'   // IMPORTANT: on renvoie déjà une Response (JsonResponse)
+          uriTemplate: 'articles/hello-world',
+          controller: HelloWorldController::class,
+          security: 'is_granted("ROLE_USER")',
+          output: false,
+          read: false,
+          name: 'hello_world'
       )
     ])]
     class HelloWorld
     {
         public function __construct(
-          private string $message = 'hello-world'
+          private readonly string $message = 'hello-world'
         ) {}
 
         public function getMessage(): string

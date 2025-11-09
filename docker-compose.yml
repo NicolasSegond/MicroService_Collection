@@ -124,7 +124,7 @@ services:
 
       KC_ISSUER: http://localhost:8080/realms/collector_realms
       KC_CLIENT_ID: collector
-      KC_CLIENT_SECRET: cCz348v5oTrwxczJyNq2k2WKi9LI95jY
+      KC_CLIENT_SECRET: IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G
     volumes:
       - ./kong/kong.yml:/usr/local/kong/kong.yml:ro
     healthcheck:
@@ -165,8 +165,10 @@ services:
     environment:
       DATABASE_URL: postgresql://user_admin:user_pass@user-db:5432/user_db
       KAFKA_BROKERS: kafka:9092
+      APP_ENV: dev
     volumes:
       - ./user-service:/app
+      - /app/vendor
 
   # ARTICLE SERVICE - PostgreSQL
   article-db:
@@ -200,5 +202,7 @@ services:
     environment:
       DATABASE_URL: postgresql://article_admin:article_pass@article-db:5432/article_db
       KAFKA_BROKERS: kafka:9092
+      APP_ENV: dev
     volumes:
       - ./article-service:/app
+      - /app/vendors
