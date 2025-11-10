@@ -904,6 +904,7 @@
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "http://localhost:3000/callback",
+        "http://localhost:3000/silent-check-sso.html",
         "http://localhost:3000/*"
       ],
       "webOrigins": [
@@ -920,7 +921,7 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3000",
+        "post.logout.redirect.uris": "http://localhost:3000/",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "use.refresh.tokens": "true",
@@ -934,7 +935,9 @@
         "client.session.max.lifespan": "36000",
         "client.session.idle.timeout": "1800",
         "token.response.type.bearer.lower-case": "false",
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "frontchannel.logout.url": "http://localhost:3000/",
+        "backchannel.logout.url": "http://localhost:3000/"
       },
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,

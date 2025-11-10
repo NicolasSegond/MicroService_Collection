@@ -206,3 +206,15 @@ services:
     volumes:
       - ./article-service:/app
       - /app/vendors
+
+  frontend:
+    build:
+      context: ./marketplace-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./marketplace-frontend:/app:cached
+      - /app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"  # active le polling pour hot reload
