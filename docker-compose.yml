@@ -122,7 +122,7 @@ services:
         /home/kong/.luarocks/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/?.so;
         /usr/local/openresty/lualib/?.so;;
 
-      KC_ISSUER: http://localhost:8080/realms/collector_realms
+      KC_ISSUER: http://keycloak:8080/realms/collector_realms
       KC_CLIENT_ID: collector
       KC_CLIENT_SECRET: IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G
     volumes:

@@ -40,16 +40,20 @@ services:
         plugins:
           - name: kong-openid-connect
             config:
-              discovery: "${KC_ISSUER}/.well-known/openid-configuration"
-              client_id: "${KC_CLIENT_ID}"
-              client_secret: "${KC_CLIENT_SECRET}"
+              discovery: "http://keycloak:8080/realms/collector_realms/.well-known/openid-configuration"
+              client_id: "collector"
+              client_secret: "IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G"
+              introspection_endpoint: "http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token/introspect"
+              introspection_endpoint_auth_method: "client_secret_post"
               ssl_verify: false
               bearer_only: true
               realm: "kong"
-              scope: "openid profile email"
+              scope: "profile email"
               user_info_header_name: "X-Userinfo"
               access_token_header_name: "X-Access-Token"
               id_token_header_name: "X-Id-Token"
+
+
 
 # PLUGINS GLOBAUX
 plugins:
