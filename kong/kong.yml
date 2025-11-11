@@ -35,7 +35,7 @@ services:
       # Ecriture protégée
       - name: article-protected
         paths: ["/api/articles", "/api/articles/"]
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         strip_path: false
         plugins:
           - name: kong-openid-connect
