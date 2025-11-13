@@ -10,16 +10,16 @@ services:
         paths: ["/api/users", "/api/users/"]
         strip_path: false
         plugins:
-          - name: kong-openid-connect
+          - name: oidc
             config:
               discovery: "${KC_ISSUER}/.well-known/openid-configuration"
               client_id: "${KC_CLIENT_ID}"
               client_secret: "${KC_CLIENT_SECRET}"
-              ssl_verify: false
-              bearer_only: true
+              ssl_verify: "no"
+              bearer_only: "yes"
               realm: "kong"
               scope: "openid profile email"
-              user_info_header_name: "X-Userinfo"     # base64 JSON userinfo
+              userinfo_header_name: "X-Userinfo"
               access_token_header_name: "X-Access-Token"
               id_token_header_name: "X-Id-Token"
 
@@ -27,27 +27,24 @@ services:
   - name: article-service
     url: http://article-service:8000
     routes:
-      # Public GET
-#      - name: article-public
-#        paths: ["/api/articles", "/api/articles/"]
-#        methods: ["GET"]
-#        strip_path: false
       # Ecriture protégée
       - name: article-protected
         paths: ["/api/articles", "/api/articles/"]
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         strip_path: false
         plugins:
-          - name: kong-openid-connect
+          - name: oidc
             config:
-              discovery: "${KC_ISSUER}/.well-known/openid-configuration"
-              client_id: "${KC_CLIENT_ID}"
-              client_secret: "${KC_CLIENT_SECRET}"
-              ssl_verify: false
-              bearer_only: true
+              discovery: "http://keycloak:8080/realms/collector_realms/.well-known/openid-configuration"
+              client_id: "collector"
+              client_secret: "IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G"
+              introspection_endpoint: "http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token/introspect"
+              introspection_endpoint_auth_method: "client_secret_post"
+              ssl_verify: "no"
+              bearer_only: "yes"
               realm: "kong"
               scope: "openid profile email"
-              user_info_header_name: "X-Userinfo"
+              userinfo_header_name: "X-Userinfo"
               access_token_header_name: "X-Access-Token"
               id_token_header_name: "X-Id-Token"
 
