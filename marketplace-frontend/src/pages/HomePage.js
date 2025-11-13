@@ -15,15 +15,18 @@ const HomePage = () => {
         const token = keycloak?.token;
         if (!token) return;
 
-        fetch("http://localhost:8000/api/articles/hello-world", {
+        fetch( process.env.REACT_APP_API_URL + "/api/articles/hello-world", {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
         })
             .then((res) => res.text())
             .then((data) => setMessage(data))
-            .catch(() => setMessage("Erreur lors de la récupération du message."));
-    }, [initialized, authenticated, keycloak, login]);
+            .catch((error) => {
+                console.error("Erreur lors de la récupération du message:", error);
+                setMessage("Erreur lors de la récupération du message.");
+            });
+    }, [initialized, authenticated, keycloak]);
 
     return (
         <div

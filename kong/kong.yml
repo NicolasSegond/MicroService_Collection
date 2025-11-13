@@ -15,11 +15,11 @@ services:
               discovery: "${KC_ISSUER}/.well-known/openid-configuration"
               client_id: "${KC_CLIENT_ID}"
               client_secret: "${KC_CLIENT_SECRET}"
-              ssl_verify: "no"                        # ⚠️ string "yes" ou "no"
-              bearer_only: "yes"                      # ⚠️ string "yes" ou "no"
+              ssl_verify: "no"
+              bearer_only: "yes"
               realm: "kong"
               scope: "openid profile email"
-              userinfo_header_name: "X-Userinfo"      # ✅ userinfo (pas user_info)
+              userinfo_header_name: "X-Userinfo"
               access_token_header_name: "X-Access-Token"
               id_token_header_name: "X-Id-Token"
 

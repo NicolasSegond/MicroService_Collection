@@ -2,12 +2,12 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copier uniquement les dépendances
+# Copy only the dependencies
 COPY package*.json ./
 RUN npm install
 
-# Ne pas copier le reste du code, le volume fera le job
+# Don't copy the rest of the code, the volume will handle it
 # COPY . .
 
-# Lancer le serveur dev
+# Start the dev server
 CMD ["npm", "start"]

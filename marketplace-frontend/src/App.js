@@ -1,6 +1,5 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { KeycloakProvider } from './KeycloakProvider';
 import Root from './pages/Root/Root';
 import HomePage from './pages/HomePage';
 import './App.css';

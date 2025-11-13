@@ -113,7 +113,7 @@ services:
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_PLUGINS: bundled,oidc
       KONG_LOG_LEVEL: info
-      # Pour que Kong trouve le plugin installé via LuaRocks
+
       KONG_LUA_PACKAGE_PATH: >-
         /home/kong/.luarocks/share/lua/5.1/?.lua;/home/kong/.luarocks/share/lua/5.1/?/init.lua;
         /usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;
@@ -217,4 +217,4 @@ services:
       - ./marketplace-frontend:/app:cached
       - /app/node_modules
     environment:
-      CHOKIDAR_USEPOLLING: "true"  # active le polling pour hot reload
+      CHOKIDAR_USEPOLLING: "true"

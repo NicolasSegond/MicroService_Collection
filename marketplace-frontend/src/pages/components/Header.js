@@ -10,7 +10,7 @@ const Header = () => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Photo de profil fake pour l'instant (seulement si connecté)
+    // Fake profile photo for now (only if logged in)
     const userProfilePic = keycloak?.tokenParsed?.picture ||
         (keycloak?.tokenParsed?.preferred_username
             ? `https://ui-avatars.com/api/?name=${keycloak.tokenParsed.preferred_username}&size=200`
@@ -25,7 +25,7 @@ const Header = () => {
     };
 
     const handleProfile = () => {
-        // Redirection vers votre page de profil personnalisée
+        // Redirect to your custom profile page
         navigate('/profile');
         setUserMenuOpen(false);
     };
@@ -37,6 +37,7 @@ const Header = () => {
                     <button
                         className="mobile-menu-btn"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        aria-label="Toggle mobile menu"
                     >
                         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
@@ -51,7 +52,6 @@ const Header = () => {
                     <Link to="/">Accueil</Link>
                     <Link to="/categories">Catégories</Link>
                     <Link to="/featured">Produits vedettes</Link>
-                    <Link to="/about">À propos</Link>
                 </nav>
 
                 <div className="header-right">
@@ -60,6 +60,7 @@ const Header = () => {
                             <button
                                 className="user-profile-btn"
                                 onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                aria-label="User menu"
                             >
                                 <img
                                     src={userProfilePic}
