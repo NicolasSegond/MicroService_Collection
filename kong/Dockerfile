@@ -23,21 +23,24 @@ RUN curl -fsSL https://luarocks.org/releases/luarocks-${LUAROCKS_VERSION}.tar.gz
  && make && make install \
  && rm -rf /tmp/luarocks*
 
-# Runtime deps
+# Runtime dependencies
 RUN luarocks install lua-resty-openidc \
  && luarocks install lua-resty-session \
  && luarocks install lua-resty-http \
  && luarocks install lua-cjson
 
-# ✅ Installer le plugin OIDC (en global /usr/local)
-RUN luarocks --tree=/usr/local install kong-openid-connect
+# ✅ Installer le plugin kong-oidc depuis GitHub
+RUN git clone https://github.com/armeldemarsac92/kong-oidc-keycloak-plugin.git /tmp/kong-oidc \
+ && cd /tmp/kong-oidc \
+ && luarocks --tree=/usr/local make kong-oidc-*.rockspec \
+ && rm -rf /tmp/kong-oidc
 
 # Cleanup
 RUN apt-get purge -y git build-essential unzip && apt-get autoremove -y \
  && rm -rf /var/lib/apt/lists/*
 
-# Paths + plugins
-ENV KONG_PLUGINS="bundled,kong-openid-connect"
+# Configuration des plugins et des chemins Lua
+ENV KONG_PLUGINS="bundled,oidc"
 ENV KONG_LUA_PACKAGE_PATH="/home/kong/.luarocks/share/lua/5.1/?.lua;/home/kong/.luarocks/share/lua/5.1/?/init.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua;/usr/local/openresty/lualib/?.lua;/usr/local/openresty/lualib/?/init.lua;;"
 ENV KONG_LUA_PACKAGE_CPATH="/home/kong/.luarocks/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/openresty/lualib/?.so;;"
 
