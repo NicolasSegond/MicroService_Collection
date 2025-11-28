@@ -1,0 +1,87 @@
+---
+env:
+  contexts:
+    - name: "Collector API"
+      urls:
+        - "http://localhost:8000"
+      includePaths:
+        - "http://localhost:8000.*"
+      excludePaths: []
+  parameters:
+    failOnError: false
+    failOnWarning: false
+    progressToStdout: true
+
+
+jobs:
+  # Spider the main site
+  - type: spider
+    parameters:
+      context: "Collector API"
+      url: "http://localhost:8000/"
+      maxDuration: 2
+      maxDepth: 5
+
+
+  # Manually request API endpoints that spider won't discover
+  - type: requestor
+    parameters:
+      user: ""
+    requests:
+      - url: "http://localhost:8000/health"
+        method: "GET"
+      - url: "http://localhost:8000/api/users"
+        method: "GET"
+      - url: "http://localhost:8000/api/articles"
+        method: "GET"
+
+
+  # Wait for passive scanning to complete
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+
+  # Active scan for common vulnerabilities
+  - type: activeScan
+    parameters:
+      context: "Collector API"
+      maxRuleDurationInMins: 1
+      maxScanDurationInMins: 5
+
+
+  # Generate reports in the reports directory
+  - type: report
+    parameters:
+      template: "traditional-html"
+      reportDir: "/zap/wrk/reports"
+      reportFile: "zap-report"
+    risks:
+      - high
+      - medium
+      - low
+      - info
+
+
+  - type: report
+    parameters:
+      template: "traditional-json"
+      reportDir: "/zap/wrk/reports"
+      reportFile: "zap-report"
+    risks:
+      - high
+      - medium
+      - low
+      - info
+
+
+  - type: report
+    parameters:
+      template: "traditional-md"
+      reportDir: "/zap/wrk/reports"
+      reportFile: "zap-report"
+    risks:
+      - high
+      - medium
+      - low
+      - info

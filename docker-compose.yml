@@ -102,6 +102,13 @@ services:
       dockerfile: Dockerfile
     image: kong-oss-oidc:local
     container_name: kong
+    depends_on:
+      keycloak:
+        condition: service_started
+      user-service:
+        condition: service_started
+      article-service:
+        condition: service_started
     networks: [app-network]
     ports:
       - "8000:8000"
@@ -138,8 +145,6 @@ services:
     image: postgres:15-alpine
     container_name: user-db
     networks: [app-network]
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_DB: user_db
       POSTGRES_USER: user_admin
@@ -164,19 +169,14 @@ services:
       - "8081:8000"
     environment:
       DATABASE_URL: postgresql://user_admin:user_pass@user-db:5432/user_db
-      KAFKA_BROKERS: kafka:9092
-      APP_ENV: dev
-    volumes:
-      - ./user-service:/app
-      - /app/vendor
+      KAFKA_BROKERS: kafka:29092
+      APP_ENV: prod
 
   # ARTICLE SERVICE - PostgreSQL
   article-db:
     image: postgres:15-alpine
     container_name: article-db
     networks: [app-network]
-    ports:
-      - "5433:5432"
     environment:
       POSTGRES_DB: article_db
       POSTGRES_USER: article_admin
@@ -201,11 +201,8 @@ services:
       - "8082:8000"
     environment:
       DATABASE_URL: postgresql://article_admin:article_pass@article-db:5432/article_db
-      KAFKA_BROKERS: kafka:9092
-      APP_ENV: dev
-    volumes:
-      - ./article-service:/app
-      - /app/vendors
+      KAFKA_BROKERS: kafka:29092
+      APP_ENV: prod
 
   frontend:
     build:
@@ -216,5 +213,4 @@ services:
     volumes:
       - ./marketplace-frontend:/app:cached
       - /app/node_modules
-    environment:
-      CHOKIDAR_USEPOLLING: "true"
+
