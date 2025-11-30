@@ -94,8 +94,27 @@ jobs:
         env:
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: |
-          openssl enc -aes-256-cbc -d -in .env.enc -out .env -k "$ENCRYPTION_KEY"
-          echo "✅ Environment file decrypted"
+          if [ ! -f .env.enc ]; then
+            echo "❌ Error: .env.enc file not found!"
+            exit 1
+          fi
+          
+          if [ -z "$ENCRYPTION_KEY" ]; then
+            echo "❌ Error: ENCRYPTION_KEY secret is not set!"
+            exit 1
+          fi
+          
+          openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"$ENCRYPTION_KEY"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Environment file decrypted successfully"
+          else
+            echo "❌ Decryption failed! Please check:"
+            echo "   - ENCRYPTION_KEY secret is correct"
+            echo "   - .env.enc was encrypted with the same key and algorithm"
+            echo "   - Use: openssl enc -aes-256-cbc -pbkdf2 -in .env -out .env.enc -pass pass:'YOUR_KEY'"
+            exit 1
+          fi
 
       - name: Start services with Docker Compose
         run: |
