@@ -90,23 +90,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Start services with Docker Compose
+      - name: Decrypt environment file
         env:
-          KEYCLOAK_POSTGRES_PASSWORD: ${{ secrets.KEYCLOAK_POSTGRES_PASSWORD }}
-          KC_DB_PASSWORD: ${{ secrets.KC_DB_PASSWORD }}
-          KC_DB_URL: ${{ secrets.KC_DB_URL }}
-          KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
-          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
-          KC_CLIENT_SECRET: ${{ secrets.KC_CLIENT_SECRET }}
-          KC_ISSUER: ${{ secrets.KC_ISSUER }}
-          USER_POSTGRES_PASSWORD: ${{ secrets.USER_POSTGRES_PASSWORD }}
-          USER_DATABASE_PASSWORD: ${{ secrets.USER_DATABASE_PASSWORD }}
-          USER_DATABASE_URL: ${{ secrets.USER_DATABASE_URL }}
-          ARTICLE_POSTGRES_PASSWORD: ${{ secrets.ARTICLE_POSTGRES_PASSWORD }}
-          ARTICLE_DATABASE_PASSWORD: ${{ secrets.ARTICLE_DATABASE_PASSWORD }}
-          ARTICLE_DATABASE_URL: ${{ secrets.ARTICLE_DATABASE_URL }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: |
-          # Docker Compose will automatically use environment variables
+          openssl enc -aes-256-cbc -d -in .env.enc -out .env -k "$ENCRYPTION_KEY"
+          echo "✅ Environment file decrypted"
+
+      - name: Start services with Docker Compose
+        run: |
           docker compose -f docker-compose.yml up -d --build
           echo "✅ Services starting with environment variables..."
 
