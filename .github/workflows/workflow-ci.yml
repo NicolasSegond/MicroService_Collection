@@ -86,11 +86,37 @@ jobs:
       issues: write
       actions: write
 
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create test .env file
+        run: |
+          cat << EOF > .env
+          # Keycloak Database Credentials
+          KEYCLOAK_POSTGRES_PASSWORD=${{ secrets.KEYCLOAK_POSTGRES_PASSWORD }}
+          KC_DB_PASSWORD=${{ secrets.KC_DB_PASSWORD }}
+          KC_DB_URL=${{ secrets.KC_DB_URL }}
+          
+          # Keycloak Admin Credentials
+          KEYCLOAK_ADMIN=${{ secrets.KEYCLOAK_ADMIN }}
+          KEYCLOAK_ADMIN_PASSWORD=${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+          
+          # Kong OIDC Configuration
+          KC_CLIENT_SECRET=${{ secrets.KC_CLIENT_SECRET }}
+          KC_ISSUER=${{ secrets.KC_ISSUER }}
+          
+          # User Service Database Credentials
+          USER_POSTGRES_PASSWORD=${{ secrets.USER_POSTGRES_PASSWORD }}
+          USER_DATABASE_PASSWORD=${{ secrets.USER_DATABASE_PASSWORD }}
+          USER_DATABASE_URL=${{ secrets.USER_DATABASE_URL }}
+          
+          # Article Service Database Credentials
+          ARTICLE_POSTGRES_PASSWORD=${{ secrets.ARTICLE_POSTGRES_PASSWORD }}
+          ARTICLE_DATABASE_PASSWORD=${{ secrets.ARTICLE_DATABASE_PASSWORD }}
+          ARTICLE_DATABASE_URL=${{ secrets.ARTICLE_DATABASE_URL }}
+          EOF
+          echo "✅ Test .env file created"
 
       - name: Start services with Docker Compose
         run: |
@@ -98,24 +124,23 @@ jobs:
           docker compose -f docker-compose.yml up -d --build
           echo "Services starting in production mode..."
 
-
       - name: Wait for all services to be healthy
         run: |
           echo "Waiting for services to be ready..."
           
-          
+
           # Wait for Keycloak (required by Kong OIDC)
           echo "Waiting for Keycloak..."
           timeout 180 bash -c 'until curl -sf http://localhost:8080/health/ready; do sleep 5; done'
           echo "Keycloak is ready!"
           
-          
+
           # Wait for Kong
           echo "Waiting for Kong..."
           timeout 120 bash -c 'until curl -sf http://localhost:8000/health; do sleep 5; done'
           echo "Kong is ready!"
           
-          
+
           # Give services a moment to stabilize
           sleep 10
           echo "All services ready!"
@@ -136,7 +161,7 @@ jobs:
           mkdir -p zap-reports
           chmod 777 zap-reports
           
-          
+
           # Run ZAP with automation framework config (use port 8180 to avoid conflict with Keycloak on 8080)
           docker run --rm \
             --network host \
@@ -148,7 +173,7 @@ jobs:
               -autorun /zap/wrk/.zap/zap.yaml \
               -config rules.cookie.ignorelist=PHPSESSID || echo "ZAP scan completed"
           
-          
+
           ls -la zap-reports/ || true
 
 
@@ -181,3 +206,4 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.yml down -v
+
