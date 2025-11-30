@@ -1,0 +1,29 @@
+# Docker Compose Override pour le développement
+# Ce fichier est automatiquement chargé par docker-compose et surcharge docker-compose.yml
+# Pour la production, ne pas utiliser ce fichier
+
+services:
+  article-service:
+    environment:
+      APP_ENV: dev
+    volumes:
+      - ./article-service:/app
+      - /app/vendor
+
+  user-service:
+    environment:
+      APP_ENV: dev
+    volumes:
+      - ./user-service:/app
+      - /app/vendor
+
+  frontend:
+    environment:
+      APP_ENV: dev
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 100
+      WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING_INTERVAL: 100
+    volumes:
+      - ./marketplace-frontend:/app:cached
+      - /app/node_modules

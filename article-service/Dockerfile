@@ -1,53 +1,71 @@
-FROM php:8.2-fpm-alpine
+#-----------------------------------------------
+# Stage 1: Builder
+#-----------------------------------------------
+FROM php:8.2-fpm-alpine AS builder
 
-# Install system dependencies
 RUN apk add --no-cache \
-    postgresql-dev \
-    librdkafka-dev \
     autoconf \
     g++ \
-    make \
     git \
-    unzip \
-    linux-headers
+    librdkafka-dev \
+    linux-headers \
+    make \
+    postgresql-dev \
+    unzip
 
-# Install PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql
 
-# Install Kafka extension
 RUN pecl install rdkafka && \
     docker-php-ext-enable rdkafka
 
-# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /app
 
-# Copy ALL application files first
+COPY composer.json composer.lock symfony.lock ./
+
+RUN composer install --prefer-dist --no-dev --no-interaction --optimize-autoloader --no-scripts --no-progress
+
 COPY . .
 
-# Debug: Show what was actually copied
-RUN echo "=== Files in /app ===" && ls -la /app/
-RUN echo "=== Checking composer.json ===" && cat composer.json | head -20
+RUN composer run-script --no-dev post-install-cmd || true && \
+    composer dump-autoload --optimize --classmap-authoritative
 
-# Install dependencies with all scripts enabled
-RUN composer install --prefer-dist --no-interaction --verbose 2>&1 | tee /tmp/composer-install.log
+#-----------------------------------------------
+# Stage 2: Final Image
+#-----------------------------------------------
+FROM php:8.2-fpm-alpine
 
-# Debug: Check vendor directory
-RUN echo "=== Vendor directory ===" && ls -la vendor/ | head -20
-RUN echo "=== Looking for autoload_runtime.php ===" && \
-    find vendor -name "autoload_runtime.php" -type f || echo "FILE NOT FOUND"
+RUN apk add --no-cache \
+    libpq \
+    postgresql-libs \
+    librdkafka \
+    nginx \
+    curl
 
-# Show what packages were installed
-RUN echo "=== Installed packages ===" && composer show | grep runtime || echo "No runtime package found"
+COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
-# Create necessary directories
-RUN mkdir -p var/cache var/log && \
-    chmod -R 777 var
+RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf
 
-# Expose port
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+COPY nginx.conf /etc/nginx/http.d/default.conf
+
+RUN mkdir -p var/cache var/log /var/log/nginx /run/nginx \
+    /var/lib/nginx/tmp/client_body \
+    /var/lib/nginx/tmp/proxy \
+    /var/lib/nginx/tmp/fastcgi \
+    /var/lib/nginx/tmp/uwsgi \
+    /var/lib/nginx/tmp/scgi && \
+    chown -R www-data:www-data /app /var/log/nginx /run/nginx \
+    /var/lib/nginx && \
+    chmod -R 755 var /var/log/nginx /run/nginx /var/lib/nginx
+
 EXPOSE 8000
 
-# Run start server
-CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+USER www-data
+
+CMD ["sh", "-c", "php-fpm -D && exec nginx -g 'daemon off;'"]
