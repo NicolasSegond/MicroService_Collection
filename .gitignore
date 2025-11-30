@@ -1,0 +1,20 @@
+# Environment variables (contains sensitive data)
+.env
+.env.local
+.env.*.local
+
+# Docker volumes data
+/var/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
