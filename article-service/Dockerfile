@@ -4,14 +4,14 @@
 FROM php:8.2-fpm-alpine AS builder
 
 RUN apk add --no-cache \
-    postgresql-dev \
-    librdkafka-dev \
     autoconf \
     g++ \
-    make \
     git \
-    unzip \
-    linux-headers
+    librdkafka-dev \
+    linux-headers \
+    make \
+    postgresql-dev \
+    unzip
 
 RUN docker-php-ext-install pdo pdo_pgsql
 

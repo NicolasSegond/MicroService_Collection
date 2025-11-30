@@ -3,7 +3,7 @@ name: CI / CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop", "improve-security" ]
+    branches: [ "main", "develop"]
   pull_request:
     branches: [ "main", "develop"]
 
@@ -90,39 +90,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create test .env file
-        run: |
-          cat << EOF > .env
-          # Keycloak Database Credentials
-          KEYCLOAK_POSTGRES_PASSWORD=${{ secrets.KEYCLOAK_POSTGRES_PASSWORD }}
-          KC_DB_PASSWORD=${{ secrets.KC_DB_PASSWORD }}
-          KC_DB_URL=${{ secrets.KC_DB_URL }}
-          
-          # Keycloak Admin Credentials
-          KEYCLOAK_ADMIN=${{ secrets.KEYCLOAK_ADMIN }}
-          KEYCLOAK_ADMIN_PASSWORD=${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
-          
-          # Kong OIDC Configuration
-          KC_CLIENT_SECRET=${{ secrets.KC_CLIENT_SECRET }}
-          KC_ISSUER=${{ secrets.KC_ISSUER }}
-          
-          # User Service Database Credentials
-          USER_POSTGRES_PASSWORD=${{ secrets.USER_POSTGRES_PASSWORD }}
-          USER_DATABASE_PASSWORD=${{ secrets.USER_DATABASE_PASSWORD }}
-          USER_DATABASE_URL=${{ secrets.USER_DATABASE_URL }}
-          
-          # Article Service Database Credentials
-          ARTICLE_POSTGRES_PASSWORD=${{ secrets.ARTICLE_POSTGRES_PASSWORD }}
-          ARTICLE_DATABASE_PASSWORD=${{ secrets.ARTICLE_DATABASE_PASSWORD }}
-          ARTICLE_DATABASE_URL=${{ secrets.ARTICLE_DATABASE_URL }}
-          EOF
-          echo "✅ Test .env file created"
-
       - name: Start services with Docker Compose
+        env:
+          KEYCLOAK_POSTGRES_PASSWORD: ${{ secrets.KEYCLOAK_POSTGRES_PASSWORD }}
+          KC_DB_PASSWORD: ${{ secrets.KC_DB_PASSWORD }}
+          KC_DB_URL: ${{ secrets.KC_DB_URL }}
+          KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+          KC_CLIENT_SECRET: ${{ secrets.KC_CLIENT_SECRET }}
+          KC_ISSUER: ${{ secrets.KC_ISSUER }}
+          USER_POSTGRES_PASSWORD: ${{ secrets.USER_POSTGRES_PASSWORD }}
+          USER_DATABASE_PASSWORD: ${{ secrets.USER_DATABASE_PASSWORD }}
+          USER_DATABASE_URL: ${{ secrets.USER_DATABASE_URL }}
+          ARTICLE_POSTGRES_PASSWORD: ${{ secrets.ARTICLE_POSTGRES_PASSWORD }}
+          ARTICLE_DATABASE_PASSWORD: ${{ secrets.ARTICLE_DATABASE_PASSWORD }}
+          ARTICLE_DATABASE_URL: ${{ secrets.ARTICLE_DATABASE_URL }}
         run: |
-          # Use only docker-compose.yml (ignore override for CI - prod mode)
+          # Docker Compose will automatically use environment variables
           docker compose -f docker-compose.yml up -d --build
-          echo "Services starting in production mode..."
+          echo "✅ Services starting with environment variables..."
 
       - name: Wait for all services to be healthy
         run: |
