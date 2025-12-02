@@ -3,10 +3,11 @@
 > POC d'une Plateforme marketplace moderne construite avec une architecture microservices event-driven
 
 [![Symfony](https://img.shields.io/badge/Symfony-7.3-000000?logo=symfony)](https://symfony.com/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
 [![Keycloak](https://img.shields.io/badge/Keycloak-23-4D4D4D?logo=keycloak)](https://www.keycloak.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-7.5-231F20?logo=apache-kafka)](https://kafka.apache.org/)
 [![Kong](https://img.shields.io/badge/Kong-Gateway-003459?logo=kong)](https://konghq.com/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions)](https://github.com/features/actions)
 
 ---
 
@@ -14,8 +15,8 @@
 
 - [🏗️ Architecture](#️-architecture)
 - [🛠️ Stack Technique](#️-stack-technique)
+- [📁 Structure du Projet](#-structure-du-projet)
 - [🚀 Installation](#-installation)
-- [⚙️ Configuration](#️-configuration)
 - [🎮 Utilisation](#-utilisation)
 - [🔌 Ports & Services](#-ports--services)
 
@@ -118,23 +119,67 @@
 | **🔐 OAuth2/OIDC** | Authentification centralisée avec Keycloak |
 | **🚫 No Direct Access** | Les services ne s'appellent pas directement |
 
-### 📡 Communication Kafka
-
-Les microservices publieront des événements dans Kafka pour communiquer de manière asynchrone. La configuration des topics et des événements sera mise en place ultérieurement.
-
 ---
 
 ## 🛠️ Stack Technique
 
 | Couche | Technologies |
 |--------|-------------|
-| **Frontend** | React 19 • Keycloak.js • React Router • Axios |
+| **Frontend** | React 18 • Keycloak.js • React Router • Axios |
 | **API Gateway** | Kong • Plugin OIDC |
 | **Backend** | Symfony 7.3 • API Platform 4.2 • PHP 8.2+ |
 | **Authentification** | Keycloak 23 (OAuth2/OIDC) |
 | **Base de données** | PostgreSQL 15 |
 | **Messagerie** | Apache Kafka 7.5 • Kafka UI |
 | **Infrastructure** | Docker • Docker Compose |
+| **CI/CD** | GitHub Actions • SonarCloud • ZAP Security |
+
+---
+
+## 📁 Structure du Projet
+
+```
+MicroService_Collection/
+├── 📂  frontend/     # Application React
+│   ├── src/
+│   │   ├── KeycloakProvider.js  # Context d'authentification
+│   │   └── pages/               # Composants de pages
+│   └── Dockerfile
+│
+├── 📂 user-service/             # Microservice utilisateurs (Symfony)
+│   ├── src/
+│   │   ├── Entity/              # Entités Doctrine
+│   │   ├── Repository/          # Repositories
+│   │   ├── Controller/          # Contrôleurs API
+│   │   └── ApiResource/         # Ressources API Platform
+│   ├── config/                  # Configuration Symfony
+│   ├── migrations/              # Migrations Doctrine
+│   └── Dockerfile
+│
+├── 📂 article-service/          # Microservice articles (Symfony)
+│   ├── src/
+│   │   ├── Entity/
+│   │   ├── Repository/
+│   │   ├── Controller/
+│   │   ├── ApiResource/
+│   │   └── Security/
+│   ├── config/
+│   ├── migrations/
+│   └── Dockerfile
+│
+├── 📂 kong/                     # Configuration API Gateway
+│   ├── Dockerfile               # Image Kong + plugin OIDC
+│   └── kong.yml                 # Routes et plugins
+│
+├── 📂 keycloak/                 # Import automatique du realm
+│
+├── 📂 .github/workflows/        # CI/CD GitHub Actions
+│
+├── docker-compose.yml           # Orchestration des services
+├── docker-compose.override.yml  # Surcharges développement
+├── .env.example                 # Template des variables
+└── .env.enc                     # Variables chiffrées
+```
 
 ---
 
@@ -147,21 +192,39 @@ Les microservices publieront des événements dans Kafka pour communiquer de man
 
 ## 🚀 Installation
 
-### Démarrage rapide
+### 1. Cloner et configurer
 
 ```bash
-# 1. Cloner le projet
 git clone <repository-url>
 cd MicroService_Collection
+```
 
-# 2. Lancer tous les services
+### 2. Configurer les variables d'environnement
+
+Déchiffrer le fichier `.env.enc` :
+
+```bash
+openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"VOTRE_CLE"
+```
+
+> 📝 Le fichier `.env.example` sert uniquement de référence pour les variables nécessaires.
+
+### 3. Lancer les services
+
+```bash
 docker-compose up -d --build
+```
 
-# 3. Créer les bases de données et migrer
+### 4. Exécuter les migrations
+
+```bash
 docker exec -it user-service php bin/console doctrine:migrations:migrate --no-interaction
 docker exec -it article-service php bin/console doctrine:migrations:migrate --no-interaction
+```
 
-# 4. Vérifier que tout fonctionne
+### 5. Vérifier l'état
+
+```bash
 docker-compose ps
 ```
 
@@ -169,13 +232,12 @@ docker-compose ps
 
 ---
 
-
 ## 🎮 Utilisation
 
 ### 🌐 Accès aux services
 
-| Service | URL | Accès |
-|---------|-----|-------|
+| Service | URL | Description |
+|---------|-----|-------------|
 | **Frontend** | http://localhost:3000 | Interface utilisateur |
 | **Keycloak** | http://localhost:8080 | Console admin |
 | **Kong Admin** | http://localhost:8001 | API d'administration |
@@ -187,12 +249,12 @@ docker-compose ps
 
 | Service | Port | Description | Technologie |
 |---------|------|-------------|-------------|
-| **Frontend** | 3000 | Interface React | React 19 |
+| **Frontend** | 3000 | Interface React | React 18 |
 | **Keycloak** | 8080 | Authentification OAuth2/OIDC | Keycloak 23 |
 | **Kong Proxy** | 8000 | API Gateway | Kong + OIDC |
 | **Kong Admin** | 8001 | Admin API | Kong |
-| **User Service** | 8081 | Gestion utilisateurs | Symfony 7.3 + PostgreSQL |
-| **Article Service** | 8082 | Gestion articles | Symfony 7.3 + PostgreSQL |
+| **User Service** | 8081 | Gestion utilisateurs | Symfony 7.3 |
+| **Article Service** | 8082 | Gestion articles | Symfony 7.3 |
 | **Kafka UI** | 8090 | Monitoring Kafka | Kafka UI |
 | **Kafka** | 9092 | Event Streaming | Apache Kafka 7.5 |
 | **User DB** | 5432 | Base utilisateurs | PostgreSQL 15 |
@@ -215,7 +277,7 @@ docker-compose restart [service-name]
 # Arrêter tous les services
 docker-compose down
 
-# Arrêter et supprimer les données (⚠️)
+# Arrêter et supprimer les données
 docker-compose down -v
 ```
 
@@ -228,9 +290,8 @@ docker-compose down -v
 
 ---
 
-
 <div align="center">
 
-**Développé pour l'apprentissage des architectures microservices**
+**Projet étudiant afin d'apprendre l'architecture Microservices**
 
 </div>

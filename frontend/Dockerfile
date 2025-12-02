@@ -1,12 +1,14 @@
 FROM node:22-alpine
+
 WORKDIR /app
 
-# Installer les dépendances (cache layer)
 COPY package*.json ./
 RUN npm install
 
-# Copier le code
-COPY . .
+# Créer le répertoire de cache et s'assurer que l'utilisateur node a les bonnes permissions
+RUN mkdir -p /app/node_modules/.cache && \
+    chown -R node:node /app
 
-# Lancer Vite en mode dev
+USER node
+
 CMD ["npm", "run", "dev"]

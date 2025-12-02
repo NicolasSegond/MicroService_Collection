@@ -22,16 +22,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: ./marketplace-frontend/package-lock.json
+          cache-dependency-path: ./frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./marketplace-frontend
+        working-directory: ./frontend
         run: npm install
 
       - name: Run ESLint
-        working-directory: ./marketplace-frontend
+        working-directory: ./frontend
         run: npm run lint
 
+      - name: Run Unit Tests
+        working-directory: ./frontend
+        run: npm run test
 
   sonarcloud:
     name: Qualité • SonarCloud (multi-langages)
