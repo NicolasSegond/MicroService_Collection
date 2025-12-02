@@ -206,11 +206,8 @@ services:
 
   frontend:
     build:
-      context: ./marketplace-frontend
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./marketplace-frontend:/app:cached
-      - /app/node_modules
 

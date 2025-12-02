@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useKeycloak } from '../../KeycloakProvider';
+import { useKeycloak } from '../../KeycloakProvider.jsx';
 import { ShoppingBag, User, Menu, X, LogOut, Settings } from 'lucide-react';
 import './Header.css';
 

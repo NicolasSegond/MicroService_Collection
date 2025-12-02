@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import Keycloak from 'keycloak-js';
 
 const KeycloakContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useKeycloak = () => {
     const context = useContext(KeycloakContext);
     if (!context) throw new Error('useKeycloak must be used within KeycloakProvider');
@@ -16,9 +17,9 @@ export const KeycloakProvider = ({ children }) => {
 
     useEffect(() => {
         const kc = new Keycloak({
-            url: process.env.REACT_APP_KEYCLOAK_URL,
-            realm: process.env.REACT_APP_KEYCLOAK_REALM,
-            clientId: process.env.REACT_APP_KEYCLOAK_CLIENT_ID
+            url: import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080',
+            realm: import.meta.env.VITE_KEYCLOAK_REALM || 'collector_realms',
+            clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'collector_front'
         });
 
         let interval; // define outside so we can clean it properly
@@ -54,8 +55,13 @@ export const KeycloakProvider = ({ children }) => {
         };
     }, []);
 
-    const login = () => keycloak?.login();
-    const logout = () => keycloak?.logout();
+    const login = useCallback(() => {
+        return keycloak?.login();
+    }, [keycloak]);
+
+    const logout = useCallback(() => {
+        return keycloak?.logout();
+    }, [keycloak]);
 
     return (
         <KeycloakContext.Provider
@@ -65,3 +71,6 @@ export const KeycloakProvider = ({ children }) => {
         </KeycloakContext.Provider>
     );
 };
+
+export default KeycloakProvider;
+

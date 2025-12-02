@@ -9,35 +9,9 @@ on:
 
 
 jobs:
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      frontend: ${{ steps.detect-frontend-changes.outputs.frontend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect frontend changes
-        uses: dorny/paths-filter@v3
-        id: detect-frontend-changes
-        with:
-          filters: |
-            frontend:
-              - 'marketplace-frontend/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.eslintrc*'
-              - '.prettierrc*'
-
-
   build-and-test:
     name: Build and Test Marketplace Frontend
     runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
 
     steps:
       - name: Checkout repository
@@ -46,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: ./marketplace-frontend/package-lock.json
 
