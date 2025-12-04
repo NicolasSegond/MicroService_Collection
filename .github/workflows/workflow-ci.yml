@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ "main", "develop"]
 
+env:
+  NODE_VERSION: 22
+  FRONT_COVERAGE: "coverage-front.info"
+
 
 jobs:
   build-and-test:
@@ -20,7 +24,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: ./frontend/package-lock.json
 
@@ -32,9 +36,16 @@ jobs:
         working-directory: ./frontend
         run: npm run lint
 
-      - name: Run Unit Tests
+      - name: Tests unitaires + couverture (Vitest)
         working-directory: ./frontend
-        run: npm run test
+        run: npm run test -- --ci --coverage --coverageReporters=lcov
+
+      - name: Artefact couverture frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ${{ env.FRONT_COVERAGE }}
+          retention-days: 7
 
   sonarcloud:
     name: Qualité • SonarCloud (multi-langages)
@@ -54,6 +65,10 @@ jobs:
           args: >
             -Dsonar.projectKey=NicolasSegond_MicroService_Collection
             -Dsonar.organization=nicolassegond
+            -Dsonar.sources=frontend/src
+            -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
+            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**
+            -Dsonar.javascript.lcov.reportPaths=frontend/${{ env.FRONT_COVERAGE }}
 
   zap:
     name: Security • ZAP Scan
