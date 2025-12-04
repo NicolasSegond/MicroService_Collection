@@ -11,10 +11,10 @@ env:
     failOnError: false
     failOnWarning: false
     progressToStdout: true
-
+    continueOnFailure: true
 
 jobs:
-  # Spider the main site
+  # Spider the main site - explore all accessible endpoints
   - type: spider
     parameters:
       context: "Collector API"
@@ -24,15 +24,44 @@ jobs:
 
 
   # Manually request API endpoints that spider won't discover
+  # ZAP will scan these regardless of auth status (401/403 responses)
   - type: requestor
     parameters:
       user: ""
     requests:
+      # Health endpoint
       - url: "http://localhost:8000/health"
         method: "GET"
+      # Root endpoint
+      - url: "http://localhost:8000/"
+        method: "GET"
+      # API endpoints
       - url: "http://localhost:8000/api/users"
         method: "GET"
       - url: "http://localhost:8000/api/articles"
+        method: "GET"
+      # ========================================
+      # VULNERABLE TEST ENDPOINTS (for ZAP testing)
+      # ========================================
+      # XSS vulnerability test (URL encoded)
+      - url: "http://localhost:8000/api/test/xss?name=%3Cscript%3Ealert(%27xss%27)%3C%2Fscript%3E"
+        method: "GET"
+      # Debug info exposure
+      - url: "http://localhost:8000/api/test/debug"
+        method: "GET"
+      # SQL injection test (URL encoded)
+      - url: "http://localhost:8000/api/test/search?q=%27%20OR%20%271%27%3D%271"
+        method: "GET"
+      # Open redirect test
+      - url: "http://localhost:8000/api/test/redirect?url=http://evil.com"
+        method: "GET"
+      # Missing security headers
+      - url: "http://localhost:8000/api/test/insecure"
+        method: "GET"
+      # Sensitive error messages
+      - url: "http://localhost:8000/api/test/error"
+        method: "GET"
+      - url: "http://localhost:8000/api/test/error?id=1"
         method: "GET"
 
 
@@ -56,32 +85,15 @@ jobs:
       template: "traditional-html"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
-
 
   - type: report
     parameters:
       template: "traditional-json"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
-
 
   - type: report
     parameters:
       template: "traditional-md"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
