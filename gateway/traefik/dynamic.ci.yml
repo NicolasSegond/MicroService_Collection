@@ -1,0 +1,113 @@
+# Traefik Dynamic Configuration - CI/CD (No Authentication)
+# This file is used ONLY for security scanning in CI pipelines
+# DO NOT USE IN PRODUCTION
+
+http:
+  # ============================================
+  # MIDDLEWARES
+  # ============================================
+  middlewares:
+    # CORS
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "PATCH"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Accept"
+          - "Content-Type"
+          - "Authorization"
+        accessControlExposeHeaders:
+          - "X-Request-ID"
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 3600
+        accessControlAllowOriginList:
+          - "http://localhost:3000"
+          - "*"
+
+    # SECURITY HEADERS
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Content-Security-Policy: "default-src 'self'; frame-ancestors 'none'"
+          Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+          Cache-Control: "no-store, no-cache, must-revalidate"
+          Pragma: "no-cache"
+        customRequestHeaders:
+          Server: ""
+
+    # RATE LIMITING (disabled for scanning)
+    rate-limit:
+      rateLimit:
+        average: 10000
+        burst: 5000
+        period: 1m
+
+    # CHAIN: All routes public (NO AUTH for CI scanning)
+    public-chain:
+      chain:
+        middlewares:
+          - cors-headers
+          - security-headers
+
+  # ============================================
+  # ROUTERS - All routes without authentication
+  # ============================================
+  routers:
+    # ROOT
+    root:
+      rule: "Path(`/`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: ping@internal
+
+    # USER SERVICE - NO AUTH
+    user-api:
+      rule: "PathPrefix(`/api/users`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: user-service
+
+    # ARTICLE SERVICE - NO AUTH
+    article-api:
+      rule: "PathPrefix(`/api/articles`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: article-service
+
+    # HEALTH ENDPOINT
+    health:
+      rule: "Path(`/health`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: ping@internal
+
+  # ============================================
+  # SERVICES
+  # ============================================
+  services:
+    user-service:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:8000"
+
+    article-service:
+      loadBalancer:
+        servers:
+          - url: "http://article-service:8000"
+
