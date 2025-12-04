@@ -88,6 +88,14 @@ http:
         - public-chain
       service: article-service
 
+    # VULNERABLE TEST ENDPOINTS - NO SECURITY HEADERS (for ZAP testing)
+    test-api:
+      rule: "PathPrefix(`/api/test`)"
+      entryPoints:
+        - web
+      # NO middlewares = no security headers, perfect for testing
+      service: article-service
+
     # HEALTH ENDPOINT
     health:
       rule: "Path(`/health`)"

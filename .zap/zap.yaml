@@ -52,6 +52,29 @@ jobs:
         method: "GET"
       - url: "http://localhost:8000/api/articles"
         method: "GET"
+      # ========================================
+      # VULNERABLE TEST ENDPOINTS (for ZAP testing)
+      # ========================================
+      # XSS vulnerability test
+      - url: "http://localhost:8000/api/test/xss?name=<script>alert('xss')</script>"
+        method: "GET"
+      # Debug info exposure
+      - url: "http://localhost:8000/api/test/debug"
+        method: "GET"
+      # SQL injection test
+      - url: "http://localhost:8000/api/test/search?q=' OR '1'='1"
+        method: "GET"
+      # Open redirect test
+      - url: "http://localhost:8000/api/test/redirect?url=http://evil.com"
+        method: "GET"
+      # Missing security headers
+      - url: "http://localhost:8000/api/test/insecure"
+        method: "GET"
+      # Sensitive error messages
+      - url: "http://localhost:8000/api/test/error"
+        method: "GET"
+      - url: "http://localhost:8000/api/test/error?id=1"
+        method: "GET"
 
 
   # Wait for passive scanning to complete
