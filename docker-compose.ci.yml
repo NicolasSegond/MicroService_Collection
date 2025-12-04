@@ -2,24 +2,16 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
 #
 # This configuration:
-# - Disables Oathkeeper (no authentication)
-# - Uses dynamic.ci.yml for Traefik (routes without auth)
+# - Uses dynamic.ci.yml for Traefik (routes without auth, bypasses Oathkeeper)
+# - Oathkeeper still runs but is not used by Traefik routes
 # - Allows ZAP to scan all API endpoints directly
 
 services:
   # Override Traefik to use CI config (no auth)
   traefik:
-    depends_on:
-      keycloak:
-        condition: service_started
-      # Remove oathkeeper dependency
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./gateway/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./gateway/traefik/dynamic.ci.yml:/etc/traefik/dynamic.yml:ro
 
-  # Oathkeeper is not needed for CI scanning
-  oathkeeper:
-    profiles:
-      - disabled
 
