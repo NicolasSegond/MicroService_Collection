@@ -110,8 +110,8 @@ services:
       - "8001:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./gateway/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./gateway/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
     healthcheck:
       test: ["CMD", "traefik", "healthcheck"]
       interval: 10s
@@ -130,7 +130,7 @@ services:
     environment:
       - KC_CLIENT_SECRET=${KC_CLIENT_SECRET}
     volumes:
-      - ./oathkeeper:/etc/oathkeeper:ro
+      - ./gateway/oathkeeper:/etc/oathkeeper:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:4456/health/alive"]
       interval: 30s
