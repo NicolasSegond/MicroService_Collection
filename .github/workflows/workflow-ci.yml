@@ -115,10 +115,14 @@ jobs:
       - name: ZAP Baseline Scan
         run: |
           # Create writable directory structure for ZAP
-          mkdir -p zap-wrk/.ZAP
+          mkdir -p zap-wrk/.ZAP zap-wrk/reports
           
-          # Copy rules file to writable location
+          # Copy ZAP config files to writable location
           cp .zap/rules.tsv zap-wrk/rules.tsv
+          cp .zap/zap.yaml zap-wrk/zap.yaml
+          
+          # Update zap.yaml URLs to use traefik hostname (internal Docker network)
+          sed -i 's|http://localhost:8000|http://traefik:80|g' zap-wrk/zap.yaml
           
           # Change ownership to zap user (UID 1000) inside container
           sudo chown -R 1000:1000 zap-wrk
@@ -127,32 +131,30 @@ jobs:
           NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'app-network' | head -1)
           echo "Using network: $NETWORK_NAME"
           
-          # Run ZAP connected to the same network as the services
-          # Mount zap-wrk as both /zap/wrk AND /home/zap to handle all file writes
+          # Show the zap.yaml content for debugging
+          echo "=== ZAP Config ==="
+          cat zap-wrk/zap.yaml
+          
+          # Run ZAP with Automation Framework (uses zap.yaml)
           docker run --rm \
             --network "${NETWORK_NAME:-microservice_collection_app-network}" \
             -v ${{ github.workspace }}/zap-wrk:/zap/wrk:rw \
             -v ${{ github.workspace }}/zap-wrk:/home/zap:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py \
-              -t http://traefik:80 \
-              -J report_json.json \
-              -w report_md.md \
-              -r report_html.html \
-              -a -j \
-              -I \
-              -c rules.tsv \
+            zap.sh -cmd \
+              -autorun /zap/wrk/zap.yaml \
             || echo "ZAP scan completed with findings"
           
           echo "=== ZAP Reports ==="
           ls -la zap-wrk/
+          ls -la zap-wrk/reports/ || true
 
       - name: Upload ZAP Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-security-report
-          path: zap-wrk/
+          path: zap-wrk/reports/
           if-no-files-found: warn
 
       - name: Stop services
