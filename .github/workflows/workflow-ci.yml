@@ -58,6 +58,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download frontend coverage artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ${{ env.FRONT_COVERAGE }}
+
       - name: Scan SonarCloud (PHP + JS/TS)
         uses: SonarSource/sonarcloud-github-action@v2
         env:

@@ -5,6 +5,9 @@ api:
   dashboard: true
   insecure: true  # Dashboard accessible sans auth (dev only)
 
+ping:
+  entryPoint: "ping"
+
 log:
   level: DEBUG  # Changer en INFO ou WARN en production
 
@@ -14,6 +17,8 @@ accessLog:
 entryPoints:
   web:
     address: ":80"
+  ping:
+    address: ":8082"
 
 providers:
   # Configuration dynamique via fichier
