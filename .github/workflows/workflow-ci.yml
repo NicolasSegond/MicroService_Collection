@@ -9,7 +9,7 @@ on:
 
 env:
   NODE_VERSION: 22
-  FRONT_COVERAGE: "coverage-front.info"
+  FRONT_COVERAGE: "frontend/coverage"
 
 
 jobs:
@@ -69,7 +69,7 @@ jobs:
             -Dsonar.sources=frontend/src
             -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
             -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**
-            -Dsonar.javascript.lcov.reportPaths=frontend/${{ env.FRONT_COVERAGE }}
+            -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}/lcov.info
 
   zap:
     name: Security • ZAP Scan
@@ -109,7 +109,7 @@ jobs:
 
           # Wait for Traefik
           echo "Waiting for Traefik..."
-          timeout 120 bash -c 'until curl -sf http://localhost:8000/health; do sleep 5; done'
+          timeout 120 bash -c 'until docker compose exec -T traefik traefik healthcheck; do sleep 5; done'
           echo "Traefik is ready!"
           
 
