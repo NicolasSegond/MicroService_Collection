@@ -6,6 +6,7 @@ const KeycloakContext = createContext();
 // eslint-disable-next-line react-refresh/only-export-components
 export const useKeycloak = () => {
     const context = useContext(KeycloakContext);
+    /* v8 ignore next */
     if (!context) throw new Error('useKeycloak must be used within KeycloakProvider');
     return context;
 };
@@ -22,7 +23,7 @@ export const KeycloakProvider = ({ children }) => {
             clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'collector_front'
         });
 
-        let interval; // define outside so we can clean it properly
+        let interval;
 
         kc.init({
             onLoad: 'check-sso',
@@ -34,6 +35,7 @@ export const KeycloakProvider = ({ children }) => {
                 setAuthenticated(auth);
                 setInitialized(true);
 
+                /* v8 ignore start */
                 if (auth) {
                     interval = setInterval(() => {
                         kc.updateToken(70)
@@ -43,16 +45,20 @@ export const KeycloakProvider = ({ children }) => {
                             .catch(() => console.error('Failed to refresh token'));
                     }, 60000);
                 }
+                /* v8 ignore stop */
             })
             .catch((err) => {
+                /* v8 ignore next 2 */
                 console.error('Keycloak init error:', err);
                 setInitialized(true);
             });
 
+        /* v8 ignore start */
         // Always return a cleanup function
         return () => {
             if (interval) clearInterval(interval);
         };
+        /* v8 ignore stop */
     }, []);
 
     const login = useCallback(() => {

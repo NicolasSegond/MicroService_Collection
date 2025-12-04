@@ -5,6 +5,9 @@ api:
   dashboard: true
   insecure: true  # Dashboard accessible sans auth (dev only)
 
+ping:
+  entryPoint: "web"
+
 log:
   level: DEBUG  # Changer en INFO ou WARN en production
 

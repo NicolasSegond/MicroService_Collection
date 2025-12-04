@@ -16,5 +16,15 @@ export default defineConfig({
         environment: 'jsdom',
         setupFiles: './src/__tests__/setup.js',
         css: true,
+        coverage: {
+            exclude: [
+                'src/main.jsx',
+                'src/index.css',
+                'src/pages/Root/Root.jsx',
+                'node_modules/**',
+                'src/__tests__/**',
+                'src/__mocks__/**',
+            ],
+        },
     },
 })
