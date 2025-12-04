@@ -114,24 +114,25 @@ jobs:
 
       - name: ZAP Baseline Scan
         run: |
-          # Create writable directory for ZAP
-          mkdir -p zap-wrk
-          chmod 777 zap-wrk
+          # Create writable directory structure for ZAP
+          mkdir -p zap-wrk/.ZAP
           
           # Copy rules file to writable location
           cp .zap/rules.tsv zap-wrk/rules.tsv
-          chmod 666 zap-wrk/rules.tsv
+          
+          # Change ownership to zap user (UID 1000) inside container
+          sudo chown -R 1000:1000 zap-wrk
           
           # Get the Docker network name created by docker-compose
           NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'app-network' | head -1)
           echo "Using network: $NETWORK_NAME"
           
           # Run ZAP connected to the same network as the services
-          # Use --user to match runner UID for file permissions
+          # Mount zap-wrk as both /zap/wrk AND /home/zap to handle all file writes
           docker run --rm \
-            --user $(id -u):$(id -g) \
             --network "${NETWORK_NAME:-microservice_collection_app-network}" \
-            -v ${{ github.workspace }}/zap-wrk:/zap/wrk/:rw \
+            -v ${{ github.workspace }}/zap-wrk:/zap/wrk:rw \
+            -v ${{ github.workspace }}/zap-wrk:/home/zap:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
               -t http://traefik:80 \
