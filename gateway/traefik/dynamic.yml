@@ -95,6 +95,15 @@ http:
   # ROUTERS
   # ============================================
   routers:
+    # ROOT - Redirect to health
+    root:
+      rule: "Path(`/`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: noop@internal
+
     # USER SERVICE - Route protégée par OIDC
     user-api:
       rule: "PathPrefix(`/api/users`)"

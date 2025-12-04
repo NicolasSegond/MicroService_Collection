@@ -28,6 +28,8 @@ jobs:
     parameters:
       user: ""
     requests:
+      - url: "http://localhost:8000/"
+        method: "GET"
       - url: "http://localhost:8000/health"
         method: "GET"
       - url: "http://localhost:8000/api/users"

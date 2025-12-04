@@ -133,14 +133,51 @@ jobs:
           echo "=== Testing endpoints ==="
           curl -v http://localhost:8000/health || true
 
+      - name: Get Keycloak Token
+        id: get-token
+        run: |
+          # Récupérer un token d'accès depuis Keycloak
+          TOKEN=$(curl -s -X POST "http://localhost:8080/realms/collector_realms/protocol/openid-connect/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials" \
+            -d "client_id=collector" \
+            -d "client_secret=${{ secrets.KC_CLIENT_SECRET }}" | jq -r '.access_token')
+          
+          if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
+            echo "⚠️ Failed to get token, ZAP will scan without authentication"
+            echo "TOKEN=" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Token obtained successfully"
+            echo "TOKEN=$TOKEN" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run ZAP Security Scan
+        env:
+          ZAP_AUTH_TOKEN: ${{ steps.get-token.outputs.TOKEN }}
         run: |
           mkdir -p zap-reports
           chmod 777 zap-reports
           
-
-          # Run ZAP with automation framework config (use port 8180 to avoid conflict with Keycloak on 8080)
+          # Créer un fichier de configuration avec le token si disponible
+          if [ -n "$ZAP_AUTH_TOKEN" ]; then
+            echo "Running ZAP with authentication token"
+            cat > /tmp/zap-auth.prop << EOF
+          replacer.full_list(0).description=Auth Header
+          replacer.full_list(0).enabled=true
+          replacer.full_list(0).matchtype=REQ_HEADER
+          replacer.full_list(0).matchstr=Authorization
+          replacer.full_list(0).regex=false
+          replacer.full_list(0).replacement=Bearer ${ZAP_AUTH_TOKEN}
+          EOF
+            AUTH_VOLUME="-v /tmp/zap-auth.prop:/zap/wrk/zap-auth.prop:ro"
+            AUTH_CONFIG="-config replacer.full_list\(0\).description=AuthHeader -config replacer.full_list\(0\).enabled=true -config replacer.full_list\(0\).matchtype=REQ_HEADER -config replacer.full_list\(0\).matchstr=Authorization -config replacer.full_list\(0\).regex=false -config replacer.full_list\(0\).replacement=\"Bearer ${ZAP_AUTH_TOKEN}\""
+          else
+            echo "Running ZAP without authentication"
+            AUTH_VOLUME=""
+            AUTH_CONFIG=""
+          fi
+          
+          # Run ZAP with automation framework config
           docker run --rm \
             --network host \
             -v ${{ github.workspace }}/.zap:/zap/wrk/.zap:ro \
@@ -149,7 +186,13 @@ jobs:
             zap.sh -cmd \
               -port 8180 \
               -autorun /zap/wrk/.zap/zap.yaml \
-              -config rules.cookie.ignorelist=PHPSESSID || echo "ZAP scan completed"
+              -config rules.cookie.ignorelist=PHPSESSID \
+              -config replacer.full_list\(0\).description=AuthHeader \
+              -config replacer.full_list\(0\).enabled=true \
+              -config replacer.full_list\(0\).matchtype=REQ_HEADER \
+              -config replacer.full_list\(0\).matchstr=Authorization \
+              -config replacer.full_list\(0\).regex=false \
+              -config "replacer.full_list(0).replacement=Bearer ${ZAP_AUTH_TOKEN}" || echo "ZAP scan completed"
           
 
           ls -la zap-reports/ || true
