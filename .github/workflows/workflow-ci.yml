@@ -38,7 +38,7 @@ jobs:
 
       - name: Tests unitaires + couverture (Vitest)
         working-directory: ./frontend
-        run: npm run test -- --ci --coverage --coverageReporters=lcov
+        run: npm run test -- --run --coverage --coverage.reporter=lcov
 
       - name: Artefact couverture frontend
         uses: actions/upload-artifact@v4
@@ -67,7 +67,7 @@ jobs:
             -Dsonar.organization=nicolassegond
             -Dsonar.sources=frontend/src
             -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
-            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**
+            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**
             -Dsonar.javascript.lcov.reportPaths=frontend/${{ env.FRONT_COVERAGE }}
 
   zap:
@@ -106,10 +106,10 @@ jobs:
           echo "Keycloak is ready!"
           
 
-          # Wait for Kong
-          echo "Waiting for Kong..."
+          # Wait for Traefik
+          echo "Waiting for Traefik..."
           timeout 120 bash -c 'until curl -sf http://localhost:8000/health; do sleep 5; done'
-          echo "Kong is ready!"
+          echo "Traefik is ready!"
           
 
           # Give services a moment to stabilize
@@ -161,8 +161,11 @@ jobs:
       - name: Show Docker logs on failure
         if: failure()
         run: |
-          echo "=== Kong logs ==="
-          docker compose logs kong --tail=100 || true
+          echo "=== Traefik logs ==="
+          docker compose logs traefik --tail=100 || true
+          echo ""
+          echo "=== Oathkeeper logs ==="
+          docker compose logs oathkeeper --tail=50 || true
           echo ""
           echo "=== Keycloak logs ==="
           docker compose logs keycloak --tail=50 || true
