@@ -11,7 +11,7 @@ env:
     failOnError: false
     failOnWarning: false
     progressToStdout: true
-
+    continueOnFailure: true
 
 jobs:
   # Import OpenAPI specs from API Platform (auto-generated)
@@ -55,14 +55,14 @@ jobs:
       # ========================================
       # VULNERABLE TEST ENDPOINTS (for ZAP testing)
       # ========================================
-      # XSS vulnerability test
-      - url: "http://localhost:8000/api/test/xss?name=<script>alert('xss')</script>"
+      # XSS vulnerability test (URL encoded)
+      - url: "http://localhost:8000/api/test/xss?name=%3Cscript%3Ealert(%27xss%27)%3C%2Fscript%3E"
         method: "GET"
       # Debug info exposure
       - url: "http://localhost:8000/api/test/debug"
         method: "GET"
-      # SQL injection test
-      - url: "http://localhost:8000/api/test/search?q=' OR '1'='1"
+      # SQL injection test (URL encoded)
+      - url: "http://localhost:8000/api/test/search?q=%27%20OR%20%271%27%3D%271"
         method: "GET"
       # Open redirect test
       - url: "http://localhost:8000/api/test/redirect?url=http://evil.com"
@@ -97,32 +97,15 @@ jobs:
       template: "traditional-html"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
-
 
   - type: report
     parameters:
       template: "traditional-json"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
-
 
   - type: report
     parameters:
       template: "traditional-md"
       reportDir: "/zap/wrk/reports"
       reportFile: "zap-report"
-    risks:
-      - high
-      - medium
-      - low
-      - info
