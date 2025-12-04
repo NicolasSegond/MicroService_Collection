@@ -51,6 +51,7 @@ jobs:
     name: Qualité • SonarCloud (multi-langages)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: build-and-test
 
     steps:
       - uses: actions/checkout@v4
