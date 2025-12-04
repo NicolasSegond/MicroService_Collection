@@ -9,6 +9,7 @@ services:
     volumes:
       - ./article-service:/app
       - /app/vendor
+      - /app/var
 
   user-service:
     environment:
@@ -16,6 +17,7 @@ services:
     volumes:
       - ./user-service:/app
       - /app/vendor
+      - /app/var
 
   frontend:
     environment:
