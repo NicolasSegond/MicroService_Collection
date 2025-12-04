@@ -95,14 +95,14 @@ http:
   # ROUTERS
   # ============================================
   routers:
-    # ROOT - Redirect to health
+    # ROOT - Return 200 OK
     root:
       rule: "Path(`/`)"
       entryPoints:
         - web
       middlewares:
         - public-chain
-      service: noop@internal
+      service: ping@internal
 
     # USER SERVICE - Route protégée par OIDC
     user-api:
@@ -129,7 +129,7 @@ http:
         - web
       middlewares:
         - public-chain
-      service: noop@internal
+      service: ping@internal
 
   # ============================================
   # SERVICES
