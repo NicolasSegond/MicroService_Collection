@@ -14,19 +14,7 @@ env:
     continueOnFailure: true
 
 jobs:
-  # Import OpenAPI specs from API Platform (auto-generated)
-  # These endpoints expose the full API schema
-  - type: openapi
-    parameters:
-      apiUrl: "http://localhost:8000/api/users"
-      context: "Collector API"
-
-  - type: openapi
-    parameters:
-      apiUrl: "http://localhost:8000/api/articles"
-      context: "Collector API"
-
-  # Spider the main site - start from health endpoint (accessible without auth)
+  # Spider the main site - explore all accessible endpoints
   - type: spider
     parameters:
       context: "Collector API"
