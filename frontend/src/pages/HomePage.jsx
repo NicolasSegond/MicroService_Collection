@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useKeycloak } from "../KeycloakProvider";
+import { useKeycloak } from "../KeycloakProvider.jsx";
 
 const HomePage = () => {
     const { keycloak, initialized, authenticated, login } = useKeycloak();
@@ -15,7 +15,7 @@ const HomePage = () => {
         const token = keycloak?.token;
         if (!token) return;
 
-        fetch( process.env.REACT_APP_API_URL + "/api/articles/hello-world", {
+        fetch(import.meta.env.VITE_API_URL + "/api/articles/hello-world", {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -26,7 +26,7 @@ const HomePage = () => {
                 console.error("Erreur lors de la récupération du message:", error);
                 setMessage("Erreur lors de la récupération du message.");
             });
-    }, [initialized, authenticated, keycloak]);
+    }, [initialized, authenticated, keycloak, login]);
 
     return (
         <div
