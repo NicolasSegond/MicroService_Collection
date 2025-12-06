@@ -7,37 +7,15 @@ on:
   pull_request:
     branches: [ "main", "develop"]
 
+env:
+  NODE_VERSION: 22
+  FRONT_COVERAGE: "frontend/coverage"
+
 
 jobs:
-  changes:
-    name: Detect Changes
-    runs-on: ubuntu-latest
-    outputs:
-      frontend: ${{ steps.detect-frontend-changes.outputs.frontend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect frontend changes
-        uses: dorny/paths-filter@v3
-        id: detect-frontend-changes
-        with:
-          filters: |
-            frontend:
-              - 'marketplace-frontend/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.eslintrc*'
-              - '.prettierrc*'
-
-
   build-and-test:
     name: Build and Test Marketplace Frontend
     runs-on: ubuntu-latest
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
 
     steps:
       - name: Checkout repository
@@ -46,28 +24,45 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: ./marketplace-frontend/package-lock.json
+          cache-dependency-path: ./frontend/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./marketplace-frontend
+        working-directory: ./frontend
         run: npm install
 
       - name: Run ESLint
-        working-directory: ./marketplace-frontend
+        working-directory: ./frontend
         run: npm run lint
 
+      - name: Tests unitaires + couverture (Vitest)
+        working-directory: ./frontend
+        run: npm run test -- --run --coverage --coverage.reporter=lcov
+
+      - name: Artefact couverture frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ${{ env.FRONT_COVERAGE }}
+          retention-days: 7
 
   sonarcloud:
     name: Qualité • SonarCloud (multi-langages)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: build-and-test
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Download frontend coverage artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: ${{ env.FRONT_COVERAGE }}
 
       - name: Scan SonarCloud (PHP + JS/TS)
         uses: SonarSource/sonarcloud-github-action@v2
@@ -77,14 +72,18 @@ jobs:
           args: >
             -Dsonar.projectKey=NicolasSegond_MicroService_Collection
             -Dsonar.organization=nicolassegond
+            -Dsonar.sources=frontend/src
+            -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
+            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**
+            -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}/lcov.info
 
-  zap:
-    name: Security • ZAP Scan
+  # ===========================================================================
+  # ZAP SCAN - Local (CI with Docker Compose)
+  # ===========================================================================
+  zap-local:
+    name: Security • ZAP Scan (Local)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      actions: write
+    if: github.event_name == 'pull_request'  # Only on PRs, not on deploy to staging
 
     steps:
       - name: Checkout repository
@@ -95,94 +94,69 @@ jobs:
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: |
           openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"$ENCRYPTION_KEY"
-          echo "✅ Environment file decrypted."
-       
 
-      - name: Start services with Docker Compose
+      - name: Start services (CI mode - no auth)
         run: |
-          docker compose -f docker-compose.yml up -d --build
-          echo "✅ Services starting with environment variables..."
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
 
-      - name: Wait for all services to be healthy
+      - name: Wait for services
         run: |
-          echo "Waiting for services to be ready..."
-          
-
-          # Wait for Keycloak (required by Kong OIDC)
           echo "Waiting for Keycloak..."
           timeout 180 bash -c 'until curl -sf http://localhost:8080/health/ready; do sleep 5; done'
-          echo "Keycloak is ready!"
           
-
-          # Wait for Kong
-          echo "Waiting for Kong..."
-          timeout 120 bash -c 'until curl -sf http://localhost:8000/health; do sleep 5; done'
-          echo "Kong is ready!"
+          # Wait for Traefik
+          echo "Waiting for Traefik..."
+          timeout 120 bash -c 'until docker compose exec -T traefik traefik healthcheck; do sleep 5; done'
+          echo "Traefik is ready!"
           
+          sleep 5
+          echo "✅ All services ready!"
 
-          # Give services a moment to stabilize
-          sleep 10
-          echo "All services ready!"
-
-
-      - name: Debug - Check services status
-        if: always()
+      - name: ZAP Baseline Scan
         run: |
-          echo "=== Docker containers status ==="
-          docker compose ps
-          echo ""
-          echo "=== Testing endpoints ==="
-          curl -v http://localhost:8000/health || true
-
-
-      - name: Run ZAP Security Scan
-        run: |
-          mkdir -p zap-reports
-          chmod 777 zap-reports
+          # Create writable directory structure for ZAP
+          mkdir -p zap-wrk/.ZAP zap-wrk/reports
           
-
-          # Run ZAP with automation framework config (use port 8180 to avoid conflict with Keycloak on 8080)
+          # Copy ZAP config files to writable location
+          cp .zap/rules.tsv zap-wrk/rules.tsv
+          cp .zap/zap.yaml zap-wrk/zap.yaml
+          
+          # Update zap.yaml URLs to use traefik hostname (internal Docker network)
+          sed -i 's|http://localhost:8000|http://traefik:80|g' zap-wrk/zap.yaml
+          
+          # Change ownership to zap user (UID 1000) inside container
+          sudo chown -R 1000:1000 zap-wrk
+          
+          # Get the Docker network name created by docker-compose
+          NETWORK_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'app-network' | head -1)
+          echo "Using network: $NETWORK_NAME"
+          
+          # Show the zap.yaml content for debugging
+          echo "=== ZAP Config ==="
+          cat zap-wrk/zap.yaml
+          
+          # Run ZAP with Automation Framework (uses zap.yaml)
           docker run --rm \
-            --network host \
-            -v ${{ github.workspace }}/.zap:/zap/wrk/.zap:ro \
-            -v ${{ github.workspace }}/zap-reports:/zap/wrk/reports:rw \
+            --network "${NETWORK_NAME:-microservice_collection_app-network}" \
+            -v ${{ github.workspace }}/zap-wrk:/zap/wrk:rw \
+            -v ${{ github.workspace }}/zap-wrk:/home/zap:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap.sh -cmd \
-              -port 8180 \
-              -autorun /zap/wrk/.zap/zap.yaml \
-              -config rules.cookie.ignorelist=PHPSESSID || echo "ZAP scan completed"
+              -autorun /zap/wrk/zap.yaml \
+            || echo "ZAP scan completed with findings"
           
+          echo "=== ZAP Reports ==="
+          ls -la zap-wrk/
+          ls -la zap-wrk/reports/ || true
 
-          ls -la zap-reports/ || true
-
-
-      - name: Upload ZAP Reports
+      - name: Upload ZAP Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-security-report
-          path: zap-reports/
+          path: zap-wrk/reports/
           if-no-files-found: warn
-          retention-days: 30
-
-
-      - name: Show Docker logs on failure
-        if: failure()
-        run: |
-          echo "=== Kong logs ==="
-          docker compose logs kong --tail=100 || true
-          echo ""
-          echo "=== Keycloak logs ==="
-          docker compose logs keycloak --tail=50 || true
-          echo ""
-          echo "=== User Service logs ==="
-          docker compose logs user-service --tail=50 || true
-          echo ""
-          echo "=== Article Service logs ==="
-          docker compose logs article-service --tail=50 || true
-
 
       - name: Stop services
         if: always()
-        run: docker compose -f docker-compose.yml down -v
-
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
