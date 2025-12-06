@@ -1,0 +1,75 @@
+# Ory Oathkeeper Configuration
+# Authentification via introspection Keycloak
+
+serve:
+  proxy:
+    port: 4455
+  api:
+    port: 4456
+
+log:
+  level: debug
+  format: json
+
+errors:
+  fallback:
+    - json
+  handlers:
+    json:
+      enabled: true
+      config:
+        verbose: true
+
+access_rules:
+  repositories:
+    - file:///etc/oathkeeper/rules.yaml
+
+authenticators:
+  # Introspection OAuth2 - Appelle Keycloak pour valider le token
+  oauth2_introspection:
+    enabled: true
+    config:
+      introspection_url: http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token/introspect
+      scope_strategy: none
+      introspection_request_headers:
+        content-type: application/x-www-form-urlencoded
+        authorization: Basic Y29sbGVjdG9yOklESDExc05lS0lGcERVRWNMYXZUelIwUXpZdUpwZjFH
+      token_from:
+        header: Authorization
+      retry:
+        max_delay: 500ms
+        give_up_after: 2s
+
+  # Bearer token désactivé - on utilise introspection
+  bearer_token:
+    enabled: false
+
+  # Anonyme pour les routes publiques
+  anonymous:
+    enabled: true
+    config:
+      subject: anonymous
+
+  # Noop pour les routes sans auth
+  noop:
+    enabled: true
+
+authorizers:
+  allow:
+    enabled: true
+
+mutators:
+  # Hydrator désactivé - le JwtAuthenticator extrait les infos du token directement
+  hydrator:
+    enabled: false
+
+  # Passe le token Bearer au backend - les autres infos sont extraites du JWT
+  header:
+    enabled: true
+    config:
+      headers:
+        Authorization: "{{ .MatchContext.Header.Get \"Authorization\" }}"
+
+  # Noop - ne modifie rien
+  noop:
+    enabled: true

@@ -1,0 +1,32 @@
+# Traefik Static Configuration
+# Ce fichier contient la configuration statique de Traefik
+
+api:
+  dashboard: true
+  insecure: true  # Dashboard accessible sans auth (dev only)
+
+ping:
+  entryPoint: "web"
+
+log:
+  level: DEBUG  # Changer en INFO ou WARN en production
+
+accessLog:
+  format: json
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  # Configuration dynamique via fichier
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+  # Docker provider pour détecter les services
+  # Les routes sont définies dans les fichiers, pas via labels
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: app-network
