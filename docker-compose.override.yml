@@ -8,16 +8,12 @@ services:
       APP_ENV: dev
     volumes:
       - ./article-service:/app
-      - /app/vendor
-      - /app/var
 
   user-service:
     environment:
       APP_ENV: dev
     volumes:
       - ./user-service:/app
-      - /app/vendor
-      - /app/var
 
   frontend:
     environment:
@@ -27,5 +23,4 @@ services:
       WATCHPACK_POLLING: "true"
       WATCHPACK_POLLING_INTERVAL: 100
     volumes:
-      - ./frontend:/app:cached
-      - /app/node_modules
+      - ./frontend:/app

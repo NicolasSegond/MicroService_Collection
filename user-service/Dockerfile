@@ -41,10 +41,15 @@ RUN apk add --no-cache \
     postgresql-libs \
     librdkafka \
     nginx \
-    curl
+    curl \
+    git \
+    unzip
 
 COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+# Ajouter composer dans l'image finale (nécessaire pour le mode dev)
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf
 

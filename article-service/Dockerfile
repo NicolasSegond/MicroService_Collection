@@ -23,7 +23,6 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 
 COPY composer.json composer.lock symfony.lock ./
-
 RUN composer install --prefer-dist --no-dev --no-interaction --optimize-autoloader --no-scripts --no-progress
 
 COPY . .
@@ -41,10 +40,16 @@ RUN apk add --no-cache \
     postgresql-libs \
     librdkafka \
     nginx \
-    curl
+    curl \
+    git \
+    unzip
 
+# Copier les extensions PHP du builder
 COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 COPY --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
+
+# Ajouter composer dans l'image finale (nécessaire pour le mode dev)
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf
 
