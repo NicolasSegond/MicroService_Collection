@@ -26,6 +26,12 @@ use Symfony\Component\Serializer\Annotation\Groups;
 )]
 class Article
 {
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->status = 'DRAFT';
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
