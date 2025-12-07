@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useKeycloak } from "../KeycloakProvider.jsx";
+import React, {useEffect, useState} from "react";
+import {useKeycloak} from "../KeycloakProvider.jsx";
 
 const HomePage = () => {
-    const { keycloak, initialized, authenticated, login } = useKeycloak();
+    const {keycloak, initialized, authenticated, login} = useKeycloak();
     const [message, setMessage] = useState(null);
 
     useEffect(() => {
@@ -15,7 +15,7 @@ const HomePage = () => {
         const token = keycloak?.token;
         if (!token) return;
 
-        fetch(import.meta.env.VITE_API_URL + "/api/articles/hello-world", {
+        fetch(import.meta.env.VITE_API_URL + "/api/test/hello-world", {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -31,12 +31,20 @@ const HomePage = () => {
     return (
         <div
             className="marketplace"
-            style={{ padding: "4rem", textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "80vh" }}
+            style={{
+                padding: "4rem",
+                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "80vh"
+            }}
         >
             {message ? (
-                <h1 style={{ fontSize: "3rem", fontWeight: "700" }}>{message}</h1>
+                <h1 style={{fontSize: "3rem", fontWeight: "700"}}>{message}</h1>
             ) : (
-                <p style={{ fontSize: "1.5rem" }}>Chargement du message...</p>
+                <p style={{fontSize: "1.5rem"}}>Chargement du message...</p>
             )}
         </div>
     );

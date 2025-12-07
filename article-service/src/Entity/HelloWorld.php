@@ -8,7 +8,7 @@ use App\Controller\HelloWorldController;
 
 #[ApiResource(operations: [
     new GetCollection(
-        uriTemplate: '/articles/hello-world',
+        uriTemplate: '/test/hello-world',
         controller: HelloWorldController::class,
         security: 'is_granted("ROLE_USER")',
         read: false,

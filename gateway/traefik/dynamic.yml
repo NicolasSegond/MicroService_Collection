@@ -122,6 +122,15 @@ http:
         - api-chain
       service: article-service
 
+    # TEST SERVICE - Route protégée par OIDC (Article Service)
+    test-api:
+      rule: "PathPrefix(`/api/test`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: article-service
+
     # HEALTH ENDPOINT - Route publique (pas d'auth)
     health:
       rule: "Path(`/health`)"
