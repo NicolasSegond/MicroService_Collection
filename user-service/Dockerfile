@@ -32,7 +32,7 @@ RUN composer run-script --no-dev post-install-cmd || true && \
     composer dump-autoload --optimize --classmap-authoritative
 
 #-----------------------------------------------
-# Stage 2: Final image
+# Stage 2: Final Image
 #-----------------------------------------------
 FROM php:8.2-fpm-alpine
 
@@ -68,5 +68,4 @@ EXPOSE 8000
 
 USER www-data
 
-# Start PHP-FPM and Nginx
 CMD ["sh", "-c", "php-fpm -D && exec nginx -g 'daemon off;'"]

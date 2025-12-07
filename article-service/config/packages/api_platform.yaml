@@ -4,4 +4,11 @@ api_platform:
     defaults:
         stateless: true
         cache_headers:
-            vary: ['Content-Type', 'Authorization', 'Origin']
+            vary: [ 'Content-Type', 'Authorization', 'Origin' ]
+
+    swagger:
+        versions: [ 3 ]
+        api_keys:
+            Bearer:
+                name: Authorization
+                type: header

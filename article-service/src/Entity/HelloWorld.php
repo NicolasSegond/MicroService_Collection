@@ -1,29 +1,28 @@
 <?php
-// src/Entity/HelloWorld.php
-    namespace App\Entity;
 
-    use ApiPlatform\Metadata\ApiResource;
-    use ApiPlatform\Metadata\Get;
-    use App\Controller\HelloWorldController;
+namespace App\Entity;
 
-    #[ApiResource(operations: [
-      new Get(
-          uriTemplate: 'articles/hello-world',
-          controller: HelloWorldController::class,
-          security: 'is_granted("ROLE_USER")',
-          output: false,
-          read: false,
-          name: 'hello_world'
-      )
-    ])]
-    class HelloWorld
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use App\Controller\HelloWorldController;
+
+#[ApiResource(operations: [
+    new GetCollection(
+        uriTemplate: '/articles/hello-world',
+        controller: HelloWorldController::class,
+        security: 'is_granted("ROLE_USER")',
+        read: false,
+        name: 'hello_world'
+    )
+])]
+class HelloWorld
+{
+    public function __construct()
     {
-        public function __construct(
-          private readonly string $message = 'hello-world'
-        ) {}
-
-        public function getMessage(): string
-        {
-            return $this->message;
-        }
     }
+
+    public function getMessage(): string
+    {
+        return $this->message;
+    }
+}
