@@ -76,7 +76,6 @@ jobs:
             -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
             -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}/lcov.info
-
   # ===========================================================================
   # ZAP SCAN - Local (CI with Docker Compose)
   # ===========================================================================
@@ -94,11 +93,9 @@ jobs:
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         run: |
           openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"$ENCRYPTION_KEY"
-
       - name: Start services (CI mode - no auth)
         run: |
           docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
-
       - name: Wait for services
         run: |
           echo "Waiting for Keycloak..."
@@ -111,7 +108,6 @@ jobs:
           
           sleep 5
           echo "✅ All services ready!"
-
       - name: ZAP Baseline Scan
         run: |
           # Create writable directory structure for ZAP
@@ -148,7 +144,6 @@ jobs:
           echo "=== ZAP Reports ==="
           ls -la zap-wrk/
           ls -la zap-wrk/reports/ || true
-
       - name: Upload ZAP Report
         if: always()
         uses: actions/upload-artifact@v4
