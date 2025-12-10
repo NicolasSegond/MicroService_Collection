@@ -36,7 +36,7 @@ class Article
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->status = 'DRAFT';
+        $this->status = 'PUBLISHED';
     }
 
     #[ORM\Id]
