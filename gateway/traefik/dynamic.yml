@@ -1,0 +1,155 @@
+# Traefik Dynamic Configuration
+# Middlewares, Routers & Services
+
+http:
+  # ============================================
+  # MIDDLEWARES
+  # ============================================
+  middlewares:
+    # AUTHENTIFICATION OIDC via Oathkeeper (introspection)
+    oidc-auth:
+      forwardAuth:
+        address: "http://oathkeeper:4456/decisions"
+        authResponseHeaders:
+          - "X-User-Id"
+          - "X-User-Email"
+          - "X-User-Username"
+          - "X-User-Given-Name"
+          - "X-User-Family-Name"
+          - "X-User-Realm-Access"
+          - "Authorization"
+        trustForwardHeader: true
+
+    # CORS
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "PATCH"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowHeaders:
+          - "Accept"
+          - "Content-Type"
+          - "Authorization"
+        accessControlExposeHeaders:
+          - "X-Request-ID"
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 3600
+        accessControlAllowOriginList:
+          - "http://localhost:3000"
+
+    # SECURITY HEADERS
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Content-Security-Policy: "default-src 'self'; frame-ancestors 'none'"
+          Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+          Cache-Control: "no-store, no-cache, must-revalidate"
+          Pragma: "no-cache"
+        customRequestHeaders:
+          Server: ""
+
+    # RATE LIMITING
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
+
+    # REQUEST SIZE LIMIT
+    request-size:
+      buffering:
+        maxRequestBodyBytes: 10485760  # 10 MB
+
+    # CORRELATION ID / REQUEST ID
+    add-request-id:
+      headers:
+        customRequestHeaders:
+          X-Request-ID: ""
+
+    # CHAIN: Routes protégées (avec auth)
+    api-chain:
+      chain:
+        middlewares:
+          - cors-headers
+          - security-headers
+          - rate-limit
+          - request-size
+          - oidc-auth
+
+    # CHAIN: Routes publiques (sans auth)
+    public-chain:
+      chain:
+        middlewares:
+          - cors-headers
+          - security-headers
+          - rate-limit
+
+  # ============================================
+  # ROUTERS
+  # ============================================
+  routers:
+    # ROOT - Return 200 OK
+    root:
+      rule: "Path(`/`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: ping@internal
+
+    # USER SERVICE - Route protégée par OIDC
+    user-api:
+      rule: "PathPrefix(`/api/users`)"
+      entryPoints:
+        - web
+      middlewares:
+        - api-chain
+      service: user-service
+
+    # ARTICLE SERVICE - Route protégée par OIDC
+    article-api:
+      rule: "PathPrefix(`/api/articles`)"
+      entryPoints:
+        - web
+      middlewares:
+        - api-chain
+      service: article-service
+
+    # TEST SERVICE - Route protégée par OIDC (Article Service)
+    test-api:
+      rule: "PathPrefix(`/api/test`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: article-service
+
+    # HEALTH ENDPOINT - Route publique (pas d'auth)
+    health:
+      rule: "Path(`/health`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: ping@internal
+
+  # ============================================
+  # SERVICES
+  # ============================================
+  services:
+    user-service:
+      loadBalancer:
+        servers:
+          - url: "http://user-service:8000"
+
+    article-service:
+      loadBalancer:
+        servers:
+          - url: "http://article-service:8000"

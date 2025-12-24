@@ -1,0 +1,9 @@
+services:
+  # Override Traefik to use CI config (no auth)
+  traefik:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./gateway/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./gateway/traefik/dynamic.ci.yml:/etc/traefik/dynamic.yml:ro
+
+

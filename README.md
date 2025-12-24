@@ -1,4 +1,4 @@
-# 🏪 Marketplace - Architecture Microservices
+# Marketplace - Architecture Microservices
 
 > POC d'une Plateforme marketplace moderne construite avec une architecture microservices event-driven
 
@@ -6,22 +6,23 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
 [![Keycloak](https://img.shields.io/badge/Keycloak-23-4D4D4D?logo=keycloak)](https://www.keycloak.org/)
 [![Kafka](https://img.shields.io/badge/Kafka-7.5-231F20?logo=apache-kafka)](https://kafka.apache.org/)
-[![Kong](https://img.shields.io/badge/Kong-Gateway-003459?logo=kong)](https://konghq.com/)
+[![Traefik](https://img.shields.io/badge/Traefik-3.2-24A1C1?logo=traefik-proxy)](https://traefik.io/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?logo=github-actions)](https://github.com/features/actions)
 
 ---
 
-## 📋 Table des matières
+## Table des matières
 
-- [🏗️ Architecture](#️-architecture)
-- [🛠️ Stack Technique](#️-stack-technique)
-- [🚀 Installation](#-installation)
-- [⚙️ Configuration](#️-configuration)
-- [🎮 Utilisation](#-utilisation)
-- [🔌 Ports & Services](#-ports--services)
+- [Architecture](#-architecture)
+- [Stack Technique](#-stack-technique)
+- [Structure du Projet](#-structure-du-projet)
+- [Installation](#-installation)
+- [Utilisation](#-utilisation)
+- [Ports & Services](#-ports--services)
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
                                        ┌─────────────┐
@@ -44,12 +45,13 @@
                    │                                                   │
                    ▼                                                   ▼
           ┌──────────────┐                                      ┌──────────────┐
-          │  Keycloak    │                                      │     Kong     │
+          │  Keycloak    │                                      │   Traefik    │
           │    :8080     │◄────────────────────────────────────▶│  API Gateway │
           │              │          Token Introspection         │    :8000     │
-          │ OAuth2/OIDC  │                                      │ OIDC Plugin  │
-          │ Token Issuer │                                      │Token Validate│
-          └──────────────┘                                      └──────┬───────┘
+          │ OAuth2/OIDC  │          (via Oathkeeper)            ├──────────────┤
+          │ Token Issuer │                                      │  Oathkeeper  │
+          └──────────────┘                                      │  (Decision)  │
+                                                                └──────┬───────┘
                                                                        │
                                                                        │
                                     ┌──────────────────────────────────┴──────────────────────────────────┐
@@ -97,140 +99,238 @@
                                                           └─────────────────────┘
 ```
 
-### 🔄 Flux d'authentification
+### Flux d'authentification
 
-1. **Client** accède au **Frontend React**
+1. **Client** accede au **Frontend React**
 2. **Frontend** redirige vers **Keycloak** pour l'authentification
 3. **Keycloak** retourne un **JWT Token** au Frontend
-4. **Frontend** appelle les API via **Kong** avec le token Bearer
-5. **Kong** valide le token avec **Keycloak** (introspection)
-6. **Kong** route vers les **microservices** avec contexte utilisateur
-7. **Microservices** traitent la requête et accèdent à leur propre DB
-8. **Microservices** publient des événements dans **Kafka**
+4. **Frontend** appelle les API via **Traefik** avec le token Bearer
+5. **Traefik** delegue la validation a **Oathkeeper** (forward auth)
+6. **Oathkeeper** valide le token avec **Keycloak** (introspection)
+7. **Traefik** route vers les **microservices** avec le contexte utilisateur
+8. **Microservices** traitent la requete et accedent a leur propre DB
+9. **Microservices** publient des evenements dans **Kafka**
 
-### 🎯 Principes clés
+### Principes cles
 
 | Principe | Description |
 |----------|-------------|
-| **🔒 API Gateway** | Kong centralise l'authentification et le routage |
-| **🗄️ Database per Service** | Chaque service a sa propre base de données isolée |
-| **📨 Event-Driven** | Communication asynchrone via Kafka entre services |
-| **🔐 OAuth2/OIDC** | Authentification centralisée avec Keycloak |
-| **🚫 No Direct Access** | Les services ne s'appellent pas directement |
-
-### 📡 Communication Kafka
-
-Les microservices publieront des événements dans Kafka pour communiquer de manière asynchrone. La configuration des topics et des événements sera mise en place ultérieurement.
+| **API Gateway** | Traefik centralise le routage, Oathkeeper gere l'authentification |
+| **Database per Service** | Chaque service a sa propre base de donnees isolee |
+| **Event-Driven** | Communication asynchrone via Kafka entre services |
+| **OAuth2/OIDC** | Authentification centralisee avec Keycloak |
+| **Token Introspection** | Validation des tokens en temps reel via Keycloak |
+| **No Direct Access** | Les services ne s'appellent pas directement |
 
 ---
 
-## 🛠️ Stack Technique
+## Stack Technique
 
 | Couche | Technologies |
 |--------|-------------|
-| **Frontend** | React 19 • Keycloak.js • React Router • Axios |
-| **API Gateway** | Kong • Plugin OIDC |
-| **Backend** | Symfony 7.3 • API Platform 4.2 • PHP 8.2+ |
-| **Authentification** | Keycloak 23 (OAuth2/OIDC) |
-| **Base de données** | PostgreSQL 15 |
-| **Messagerie** | Apache Kafka 7.5 • Kafka UI |
-| **Infrastructure** | Docker • Docker Compose |
+| **Frontend** | React 19, Keycloak.js, React Router, Vite 7 |
+| **API Gateway** | Traefik 3.2, Ory Oathkeeper |
+| **Backend** | Symfony 7.3, API Platform 4.2, PHP 8.2+ |
+| **Authentification** | Keycloak 23 (OAuth2/OIDC), Token Introspection |
+| **Base de donnees** | PostgreSQL 15 |
+| **Messagerie** | Apache Kafka 7.5, Kafka UI |
+| **Infrastructure** | Docker, Docker Compose |
+| **CI/CD** | GitHub Actions, SonarCloud, ZAP Security |
 
 ---
 
-## 📦 Prérequis
+## Structure du Projet
+
+```
+MicroService_Collection/
+├── frontend/                    # Application React
+│   ├── src/
+│   │   ├── KeycloakProvider.jsx # Context d'authentification
+│   │   └── pages/               # Composants de pages
+│   └── Dockerfile
+│
+├── user-service/                # Microservice utilisateurs (Symfony)
+│   ├── src/
+│   │   ├── Entity/              # Entites Doctrine
+│   │   ├── Repository/          # Repositories
+│   │   ├── Controller/          # Controleurs API
+│   │   └── ApiResource/         # Ressources API Platform
+│   ├── config/                  # Configuration Symfony
+│   ├── migrations/              # Migrations Doctrine
+│   └── Dockerfile
+│
+├── article-service/             # Microservice articles (Symfony)
+│   ├── src/
+│   │   ├── Entity/
+│   │   ├── Repository/
+│   │   ├── Controller/
+│   │   ├── ApiResource/
+│   │   └── Security/            # JwtAuthenticator
+│   ├── config/
+│   ├── migrations/
+│   └── Dockerfile
+│
+├── traefik/                     # Configuration API Gateway
+│   ├── traefik.yml              # Configuration statique
+│   └── dynamic.yml              # Middlewares, routers & services
+│
+├── oathkeeper/                  # Authentification OIDC
+│   ├── config.yaml              # Configuration introspection
+│   └── rules.yaml               # Regles d'acces par route
+│
+├── keycloak/                    # Import automatique du realm
+│   └── realm-export.json
+│
+├── .github/workflows/           # CI/CD GitHub Actions
+│
+├── docker-compose.yml           # Orchestration des services
+├── docker-compose.override.yml  # Surcharges developpement
+└── .env.example                 # Template des variables
+```
+
+---
+
+## Prerequis
 
 - **Docker** 20.10+ & **Docker Compose** 2.0+
 - **Git**
 
 ---
 
-## 🚀 Installation
+## Installation
 
-### Démarrage rapide
+### 1. Cloner et configurer
 
 ```bash
-# 1. Cloner le projet
 git clone <repository-url>
 cd MicroService_Collection
-
-# 2. Lancer tous les services
-docker-compose up -d --build
-
-# 3. Créer les bases de données et migrer
-docker exec -it user-service php bin/console doctrine:migrations:migrate --no-interaction
-docker exec -it article-service php bin/console doctrine:migrations:migrate --no-interaction
-
-# 4. Vérifier que tout fonctionne
-docker-compose ps
 ```
 
-> ⏳ Keycloak peut prendre 2-3 minutes pour démarrer complètement
+### 2. Décrypter les variables d'environnement
+
+```bash
+openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"VOTRE_CLE_SECRETE"
+```
+
+> Contactez un membre de l'équipe pour obtenir la clé d'encryption.
+
+### 3. Lancer les services
+
+```bash
+docker compose up -d --build
+```
+
+### 4. Executer les migrations
+
+```bash
+docker exec -it user-service php bin/console doctrine:migrations:migrate --no-interaction
+docker exec -it article-service php bin/console doctrine:migrations:migrate --no-interaction
+```
+
+### 5. Verifier l'etat
+
+```bash
+docker compose ps
+```
+
+> Keycloak peut prendre 2-3 minutes pour demarrer completement
 
 ---
 
+## Utilisation
 
-## 🎮 Utilisation
+### Acces aux services
 
-### 🌐 Accès aux services
-
-| Service | URL | Accès |
-|---------|-----|-------|
+| Service | URL | Description |
+|---------|-----|-------------|
 | **Frontend** | http://localhost:3000 | Interface utilisateur |
 | **Keycloak** | http://localhost:8080 | Console admin |
-| **Kong Admin** | http://localhost:8001 | API d'administration |
+| **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik |
 | **Kafka UI** | http://localhost:8090 | Monitoring Kafka |
 
----
-
-## 🔌 Ports & Services
+## Ports & Services
 
 | Service | Port | Description | Technologie |
 |---------|------|-------------|-------------|
 | **Frontend** | 3000 | Interface React | React 19 |
 | **Keycloak** | 8080 | Authentification OAuth2/OIDC | Keycloak 23 |
-| **Kong Proxy** | 8000 | API Gateway | Kong + OIDC |
-| **Kong Admin** | 8001 | Admin API | Kong |
-| **User Service** | 8081 | Gestion utilisateurs | Symfony 7.3 + PostgreSQL |
-| **Article Service** | 8082 | Gestion articles | Symfony 7.3 + PostgreSQL |
+| **Traefik Proxy** | 8000 | API Gateway | Traefik 3.2 |
+| **Traefik Dashboard** | 8001 | Monitoring | Traefik |
+| **User Service** | 8081 | Gestion utilisateurs | Symfony 7.3 |
+| **Article Service** | 8082 | Gestion articles | Symfony 7.3 |
 | **Kafka UI** | 8090 | Monitoring Kafka | Kafka UI |
 | **Kafka** | 9092 | Event Streaming | Apache Kafka 7.5 |
-| **User DB** | 5432 | Base utilisateurs | PostgreSQL 15 |
-| **Article DB** | 5433 | Base articles | PostgreSQL 15 |
 
 ---
 
-## 🐛 Commandes utiles
+## Commandes utiles
+
+### Frontend (depuis `frontend/`)
+
+```bash
+# Développement
+npm run dev              # Lancer le serveur Vite (port 3000)
+
+# Tests
+npm run test             # Lancer les tests Vitest
+npm run test:ui          # Tests avec interface UI
+npm run test:coverage    # Tests avec couverture
+
+# Build & Lint
+npm run build            # Build de production
+npm run lint             # Lancer ESLint
+```
+
+### Docker
 
 ```bash
 # Voir les logs
-docker-compose logs -f [service-name]
+docker compose logs -f [service-name]
+
+# Logs Traefik
+docker compose logs -f traefik
+
+# Logs Oathkeeper (auth)
+docker compose logs -f oathkeeper
 
 # Entrer dans un conteneur
 docker exec -it [container-name] bash
 
-# Redémarrer un service
-docker-compose restart [service-name]
+# Redemarrer un service
+docker compose restart [service-name]
 
-# Arrêter tous les services
-docker-compose down
+# Arreter tous les services
+docker compose down
 
-# Arrêter et supprimer les données (⚠️)
-docker-compose down -v
+# Arreter et supprimer les donnees
+docker compose down -v
 ```
 
+### Encryption du fichier .env
+
+Le fichier `.env` contient des secrets et ne doit pas être versionné en clair. Utilisez ces commandes pour gérer l'encryption :
+
+```bash
+# Encrypter le fichier .env (génère .env.enc)
+openssl enc -aes-256-cbc -pbkdf2 -in .env -out .env.enc -pass pass:"VOTRE_CLE_SECRETE"
+
+# Décrypter le fichier .env.enc
+openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"VOTRE_CLE_SECRETE"
+```
+
+> **Note** : La clé d'encryption doit être stockée de manière sécurisée (ex: GitHub Secrets sous `ENCRYPTION_KEY`).
+
 ---
 
-## 📚 Documentation
+## Documentation
 
-- [Symfony](https://symfony.com/doc) • [API Platform](https://api-platform.com/docs) • [Keycloak](https://www.keycloak.org/documentation)
-- [Kong](https://docs.konghq.com) • [Kafka](https://kafka.apache.org/documentation) • [React](https://react.dev)
+- [Symfony](https://symfony.com/doc) | [API Platform](https://api-platform.com/docs) | [Keycloak](https://www.keycloak.org/documentation)
+- [Traefik](https://doc.traefik.io/traefik/) | [Ory Oathkeeper](https://www.ory.sh/docs/oathkeeper) | [Kafka](https://kafka.apache.org/documentation)
 
 ---
-
 
 <div align="center">
 
-**Développé pour l'apprentissage des architectures microservices**
+**Projet etudiant afin d'apprendre l'architecture Microservices**
 
 </div>
