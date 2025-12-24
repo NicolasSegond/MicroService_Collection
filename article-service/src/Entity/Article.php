@@ -17,10 +17,14 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ApiResource(
     operations: [
         new GetCollection(
+            paginationEnabled: true,
+            paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
             provider: ArticleWithOwnerProvider::class
         ),
         new Get(
+            paginationEnabled: true,
+            paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
             provider: ArticleWithOwnerProvider::class
         ),
