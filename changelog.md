@@ -7,3 +7,8 @@
 ## v1.0.1 - 30-11-2025
 - Improve security configurations for Dockerfile and secrets
 - Workflow CI/CD for automated testing (eslint), sonarcloud analysis, and ZAP security scans
+
+## v1.0.2 - 24-12-2025
+- Vite & Traefik migration
+- Update CI workflows for new architecture
+- Add article endpoints for microservice article
