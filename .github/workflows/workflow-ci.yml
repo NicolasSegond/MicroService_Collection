@@ -44,7 +44,7 @@ jobs:
         working-directory: ./frontend
         run: |
           test -f coverage/lcov.info || (echo "Pas de LCOV back, création d'un stub" && mkdir -p coverage && printf "TN:\nSF:dummy.js\nDA:1,0\nend_of_record\n" > coverage/lcov.info)
-          mv coverage/lcov.info ../${{ env.FRONT_COVERAGE }}
+          mv coverage/lcov.info ${{ env.FRONT_COVERAGE }}
 
       - name: Artefact couverture frontend
         uses: actions/upload-artifact@v4
