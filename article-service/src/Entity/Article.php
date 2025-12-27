@@ -6,6 +6,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
 use App\State\ArticleWithOwnerProvider;
@@ -35,6 +37,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         )
     ]
 )]
+#[ApiFilter(SearchFilter::class, properties: ['title' => 'ipartial'])]
 class Article
 {
     public function __construct()

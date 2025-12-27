@@ -3,8 +3,12 @@
 namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\ProviderInterface;
+use ApiPlatform\State\Pagination\PaginatorInterface;
+use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Entity\Article;
+use App\Entity\UserInfo;
 use App\Repository\UserInfoRepository;
 use ApiPlatform\Doctrine\Orm\State\CollectionProvider;
 use ApiPlatform\Doctrine\Orm\State\ItemProvider;
@@ -19,7 +23,7 @@ class ArticleWithOwnerProvider implements ProviderInterface
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        if ($operation instanceof \ApiPlatform\Metadata\GetCollection) {
+        if ($operation instanceof GetCollection) {
             $articles = $this->collectionProvider->provide($operation, $uriVariables, $context);
             return $this->enrichArticles($articles);
         }
@@ -39,26 +43,35 @@ class ArticleWithOwnerProvider implements ProviderInterface
 
         foreach ($articles as $article) {
             $articleList[] = $article;
-            if ($article->getOwnerId()) {
+            if ($article instanceof Article && $article->getOwnerId()) {
                 $ownerIds[] = $article->getOwnerId();
             }
         }
 
-        if (empty($ownerIds)) {
-            return $articleList;
-        }
-
-        $users = $this->userInfoRepository->findBy(['id' => array_unique($ownerIds)]);
-        $usersMap = [];
-        foreach ($users as $user) {
-            $usersMap[$user->getId()] = $this->formatUserInfo($user);
-        }
-
-        foreach ($articleList as $article) {
-            $ownerId = $article->getOwnerId();
-            if ($ownerId && isset($usersMap[$ownerId])) {
-                $article->setOwner($usersMap[$ownerId]);
+        if (!empty($ownerIds)) {
+            $users = $this->userInfoRepository->findBy(['id' => array_unique($ownerIds)]);
+            $usersMap = [];
+            foreach ($users as $user) {
+                $usersMap[$user->getId()] = $this->formatUserInfo($user);
             }
+
+            foreach ($articleList as $article) {
+                if ($article instanceof Article) {
+                    $ownerId = $article->getOwnerId();
+                    if ($ownerId && isset($usersMap[$ownerId])) {
+                        $article->setOwner($usersMap[$ownerId]);
+                    }
+                }
+            }
+        }
+
+        if ($articles instanceof PaginatorInterface) {
+            return new TraversablePaginator(
+                new \ArrayIterator($articleList),
+                $articles->getCurrentPage(),
+                $articles->getItemsPerPage(),
+                $articles->getTotalItems()
+            );
         }
 
         return $articleList;
@@ -77,7 +90,7 @@ class ArticleWithOwnerProvider implements ProviderInterface
         }
     }
 
-    private function formatUserInfo(\App\Entity\UserInfo $user): array
+    private function formatUserInfo(UserInfo $user): array
     {
         return [
             'id' => $user->getId(),
