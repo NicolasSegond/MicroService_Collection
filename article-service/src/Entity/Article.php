@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
+use App\State\ArticleWithOwnerProvider;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -15,8 +16,18 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
 #[ApiResource(
     operations: [
-        new GetCollection(normalizationContext: ['groups' => ['article:read']]),
-        new Get(normalizationContext: ['groups' => ['article:read']]),
+        new GetCollection(
+            paginationEnabled: true,
+            paginationItemsPerPage: 10,
+            normalizationContext: ['groups' => ['article:read']],
+            provider: ArticleWithOwnerProvider::class
+        ),
+        new Get(
+            paginationEnabled: true,
+            paginationItemsPerPage: 10,
+            normalizationContext: ['groups' => ['article:read']],
+            provider: ArticleWithOwnerProvider::class
+        ),
         new Post(
             normalizationContext: ['groups' => ['article:read']],
             denormalizationContext: ['groups' => ['article:write']],
@@ -29,7 +40,7 @@ class Article
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->status = 'DRAFT';
+        $this->status = 'PUBLISHED';
     }
 
     #[ORM\Id]
@@ -57,6 +68,9 @@ class Article
     #[ORM\Column(length: 255)]
     #[Groups(['article:read'])]
     private ?string $ownerId = null;
+
+    #[Groups(['article:read'])]
+    private ?array $owner = null;
 
     #[ORM\Column(length: 50)]
     #[Groups(['article:read'])]
@@ -128,6 +142,16 @@ class Article
     {
         $this->ownerId = $ownerId;
         return $this;
+    }
+
+    public function getOwner(): ?array
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(array $owner): void
+    {
+        $this->owner = $owner;
     }
 
     public function getStatus(): ?string

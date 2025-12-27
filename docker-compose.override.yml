@@ -8,13 +8,13 @@ services:
       - ./article-service:/app
       - /app/var
 
-  user-service:
+  article-service-consumer:
     build:
       target: dev
     environment:
       APP_ENV: dev
     volumes:
-      - ./user-service:/app
+      - ./article-service:/app
       - /app/var
 
   frontend:

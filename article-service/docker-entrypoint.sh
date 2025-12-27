@@ -35,6 +35,14 @@ if [ -n "$DATABASE_URL" ]; then
         echo "Running migrations..."
         php bin/console doctrine:migrations:migrate --no-interaction
     fi
+
+    USER_COUNT=$(php bin/console dbal:run-sql "SELECT COUNT(*) FROM user_info" 2>/dev/null | grep -o '[0-9]*' | head -n1 || echo 0)
+
+    # On ne lance les fixtures que si la base est vide (count == 0)
+    if [ "$APP_ENV" != 'prod' ] && [ "$USER_COUNT" -eq 0 ]; then
+        echo "Loading fixtures..."
+        php bin/console doctrine:fixtures:load --no-interaction
+    fi
 fi
 
 exec "$@"

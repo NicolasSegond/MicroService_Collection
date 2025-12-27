@@ -3,7 +3,6 @@ networks:
     driver: bridge
 
 volumes:
-  user-db-data:
   article-db-data:
   keycloak-db-data:
   kafka-data:
@@ -51,7 +50,7 @@ services:
       - "8090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       LOGGING_LEVEL_ROOT: WARN
 
   # KEYCLOAK
@@ -76,6 +75,7 @@ services:
     container_name: keycloak
     depends_on:
       keycloak-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
     networks: [app-network]
     ports:
       - "8080:8080"
@@ -89,8 +89,15 @@ services:
       KC_HTTP_ENABLED: 'true'
       KC_HEALTH_ENABLED: 'true'
       KC_LOG_LEVEL: INFO
+      # Kafka Event Listener config
+      KAFKA_TOPIC: keycloak-events
+      KAFKA_ADMIN_TOPIC: keycloak-admin-events
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_CLIENT_ID: keycloak
+      KAFKA_EVENTS: REGISTER,UPDATE_PROFILE,DELETE_ACCOUNT,LOGIN,LOGOUT
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
+      - ./keycloak/providers:/opt/keycloak/providers:ro
     command:
       - start-dev
       - --import-realm
@@ -138,39 +145,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # USER SERVICE - PostgreSQL
-  user-db:
-    image: postgres:15-alpine
-    container_name: user-db
-    networks: [app-network]
-    environment:
-      POSTGRES_DB: user_db
-      POSTGRES_USER: user_admin
-      POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD}
-    volumes:
-      - user-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user_admin -d user_db"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  user-service:
-    build:
-      context: ./user-service
-      target: prod
-    container_name: user-service
-    depends_on:
-      user-db: { condition: service_healthy }
-      kafka: { condition: service_healthy }
-    networks: [app-network]
-    ports:
-      - "8081:8000"
-    environment:
-      DATABASE_URL: ${USER_DATABASE_URL}
-      KAFKA_BROKERS: kafka:29092
-      APP_ENV: prod
-
   # ARTICLE SERVICE - PostgreSQL
   article-db:
     image: postgres:15-alpine
@@ -202,7 +176,28 @@ services:
     environment:
       DATABASE_URL: ${ARTICLE_DATABASE_URL}
       KAFKA_BROKERS: kafka:29092
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       APP_ENV: prod
+
+  # Consumer Kafka pour l'article service
+  article-service-consumer:
+    build:
+      context: ./article-service
+      target: prod
+    container_name: article-service-consumer
+    depends_on:
+      article-db: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      keycloak: { condition: service_started }
+    networks: [app-network]
+    environment:
+      DATABASE_URL: ${ARTICLE_DATABASE_URL}
+      KAFKA_BROKERS: kafka:29092
+      APP_ENV: prod
+    command: php bin/console app:consume-keycloak-events
+    restart: unless-stopped
 
   frontend:
     build:
