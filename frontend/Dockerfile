@@ -5,7 +5,12 @@ FROM node:22-alpine AS base
 
 WORKDIR /app
 
+RUN apk add --no-cache dos2unix
+
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+
+RUN dos2unix /usr/local/bin/docker-entrypoint && \
+    chmod +x /usr/local/bin/docker-entrypoint
 
 ENTRYPOINT ["docker-entrypoint"]
 

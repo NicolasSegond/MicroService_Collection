@@ -18,7 +18,8 @@ RUN apk add --no-cache \
     nginx \
     curl \
     git \
-    unzip
+    unzip \
+    dos2unix
 
 RUN docker-php-ext-install pdo pdo_pgsql && \
     pecl install rdkafka && \
@@ -35,6 +36,8 @@ WORKDIR /app
 COPY nginx.conf /etc/nginx/http.d/default.conf
 COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 
+RUN dos2unix /usr/local/bin/docker-entrypoint
+
 RUN mkdir -p var/cache var/log /var/log/nginx /run/nginx \
     /var/lib/nginx/tmp/client_body \
     /var/lib/nginx/tmp/proxy \
@@ -46,6 +49,7 @@ RUN mkdir -p var/cache var/log /var/log/nginx /run/nginx \
 EXPOSE 8000
 
 ENTRYPOINT ["docker-entrypoint"]
+
 CMD ["sh", "-c", "php-fpm -D && exec nginx -g 'daemon off;'"]
 
 #-----------------------------------------------
