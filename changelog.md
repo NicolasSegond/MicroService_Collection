@@ -12,3 +12,8 @@
 - Vite & Traefik migration
 - Update CI workflows for new architecture
 - Add article endpoints for microservice article
+
+## v1.0.3 - 27-12-2025
+- User synchronization and Kafka integration
+- UserInfo entity and fixtures
+- Article entity and API enhancements
