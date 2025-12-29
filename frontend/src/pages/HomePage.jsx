@@ -13,22 +13,21 @@ const HomePage = () => {
     const [hasNextPage, setHasNextPage] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
 
+    // 1. Charger les articles "A la une" (Carousel)
     useEffect(() => {
         if (!initialized) return;
-        if (!authenticated) {
-            login();
-            return;
-        }
 
         const fetchFeatured = async () => {
             try {
+                // Route publique, pas besoin de token
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles?page=1`, {
-                    headers: { Authorization: `Bearer ${keycloak.token}`, "Accept": "application/ld+json" },
+                    headers: { "Accept": "application/ld+json" },
                 });
 
                 const data = await response.json();
                 const allItems = data['member'] || [];
 
+                // On prend juste les 5 premiers pour le slider
                 setFeaturedArticles(allItems.slice(0, 5));
             } catch (err) {
                 console.error("Erreur chargement slider:", err);
@@ -38,8 +37,10 @@ const HomePage = () => {
     }, [initialized, authenticated, keycloak, login]);
 
 
+    // 2. Charger la grille d'articles (Grid)
     useEffect(() => {
-        if (!initialized || !authenticated) return;
+        // CORRECTION : On autorise le chargement même si non connecté
+        if (!initialized) return;
 
         const fetchGrid = async () => {
             setLoadingGrid(true);
@@ -50,7 +51,7 @@ const HomePage = () => {
                 }
 
                 const response = await fetch(url, {
-                    headers: { Authorization: `Bearer ${keycloak.token}`, "Accept": "application/ld+json" },
+                    headers: { "Accept": "application/ld+json" },
                 });
                 const data = await response.json();
 
@@ -59,10 +60,12 @@ const HomePage = () => {
             } catch (err) {
                 console.error("Erreur chargement grille:", err);
             } finally {
+                // IMPORTANT : On arrête le loader dans tous les cas
                 setLoadingGrid(false);
             }
         };
 
+        // Debounce pour éviter trop d'appels pendant la frappe
         const timer = setTimeout(() => fetchGrid(), 300);
         return () => clearTimeout(timer);
 

@@ -31,7 +31,7 @@ if [ -n "$DATABASE_URL" ]; then
     echo "Database is ready"
 
     # Exécuter les migrations si elles existent
-    if [ "$( find ./migrations -iname '*.php' -print -quit 2>/dev/null )" ]; then
+    if [ "$SKIP_MIGRATIONS" != "true" ] && [ "$( find ./migrations -iname '*.php' -print -quit 2>/dev/null )" ]; then
         echo "Running migrations..."
         php bin/console doctrine:migrations:migrate --no-interaction
     fi
