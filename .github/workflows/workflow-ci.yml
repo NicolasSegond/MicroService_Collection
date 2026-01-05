@@ -152,7 +152,7 @@ jobs:
             -Dsonar.organization=nicolassegond
             -Dsonar.sources=frontend/src,article-service/src
             -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__,article-service/tests
-            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php
+            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php
             -Dsonar.coverage.exclusions=article-service/src/Repository/**,article-service/src/Entity/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
             -Dsonar.php.coverage.reportPaths=article-service/${{ env.PHP_COVERAGE }}
@@ -236,3 +236,6 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+-Dsonar:
+  exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel:
+    php:
