@@ -3,17 +3,76 @@ name: CI / CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", 'home-page-frontend']
   pull_request:
     branches: [ "main", "develop" ]
 
 env:
   NODE_VERSION: 22
+  PHP_VERSION: "8.3"
+  DATABASE_URL_ARTICLE: "postgresql://article_admin:article_pass@article-db:5432/article_db"
   FRONT_COVERAGE: "coverage-front.info"
-
+  PHP_COVERAGE: "coverage-back.xml"
 
 jobs:
-  build-and-test:
+  backend:
+    name: API PLATFORM • PHPUnit + Couverture
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: article_admin
+          POSTGRES_PASSWORD: article_pass
+          POSTGRES_DB: article_db
+        ports: [ "5432:5432" ]
+        # Healthchecks pour attendre que Postgres soit prêt
+        options: >-
+          --health-cmd="pg_isready -U symfony"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configuration PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer
+          coverage: xdebug
+
+      - name: Cache Composer (accélère les installs)
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('**/composer.lock') }}
+
+      - name: Installation dépendances PHP
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Migrations BDD
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Audit sécurité des dépendances Composer
+        run: composer audit --no-interaction --format=table --locked
+
+      - name: Tests PHPUnit + Couverture
+        run: vendor/bin/phpunit --coverage-clover=${{ env.PHP_COVERAGE }}
+
+      - name: Artefact couverture backend
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: ${{ env.PHP_COVERAGE }}
+          retention-days: 7
+
+  frontend:
     name: Build and Test Marketplace Frontend
     runs-on: ubuntu-latest
 
@@ -57,7 +116,7 @@ jobs:
     name: Qualité • SonarCloud (multi-langages)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: build-and-test
+    needs: [backend, frontend]
 
     steps:
       - uses: actions/checkout@v4
