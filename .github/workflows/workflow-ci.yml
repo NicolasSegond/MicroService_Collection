@@ -136,6 +136,12 @@ jobs:
           name: frontend-coverage
           path: ${{ env.FRONT_COVERAGE }}
 
+      - name: Download backend coverage artefact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: article-service
+
       - name: Scan SonarCloud (PHP + JS/TS)
         uses: SonarSource/sonarcloud-github-action@v2
         env:
@@ -144,10 +150,11 @@ jobs:
           args: >
             -Dsonar.projectKey=NicolasSegond_MicroService_Collection
             -Dsonar.organization=nicolassegond
-            -Dsonar.sources=frontend/src
-            -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__
+            -Dsonar.sources=frontend/src,article-service/src
+            -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__,article-service/tests
             -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
+            -Dsonar.php.coverage.reportPaths=article-service/${{ env.PHP_COVERAGE }}
 
   zap-local:
     name: Security • ZAP Scan (Local)

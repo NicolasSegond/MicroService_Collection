@@ -26,7 +26,16 @@ const ImageDropzone = ({
 
             <div
                 className={`image-upload-area ${imagePreview ? 'has-image' : ''}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => document.getElementById('fileInput').click()}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        document.getElementById('fileInput').click();
+                    }
+                }}
+                onTouchStart={() => document.getElementById('fileInput').click()}
                 style={{
                     borderColor: error ? '#d32f2f' : undefined,
                     backgroundColor: error ? '#fff8f8' : undefined
