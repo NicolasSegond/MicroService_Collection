@@ -1,13 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {MemoryRouter} from 'react-router-dom';
 import HomePage from '../../../pages/HomePage';
 import * as KeycloakContext from '../../../KeycloakProvider';
+
 vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
 }));
-
-let global = {};
 
 global.fetch = vi.fn();
 
@@ -17,14 +16,14 @@ const mockArticles = [
         title: 'Article 1',
         price: 100,
         mainPhotoUrl: '/img1.jpg',
-        owner: { fullName: 'Bob' }
+        owner: {fullName: 'Bob'}
     },
     {
         id: 2,
         title: 'Article 2',
         price: 200,
         mainPhotoUrl: '/img2.jpg',
-        owner: { fullName: 'Alice' }
+        owner: {fullName: 'Alice'}
     }
 ];
 
@@ -38,21 +37,21 @@ describe('HomePage', () => {
     });
 
     it('affiche le loader tant que non initialisé', () => {
-        vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({ initialized: false });
-        render(<HomePage />);
+        vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({initialized: false});
+        render(<HomePage/>);
         expect(screen.getByText('Chargement...')).toBeInTheDocument();
     });
 
     it('charge et affiche les articles', async () => {
         global.fetch
             .mockResolvedValueOnce({
-                json: async () => ({ member: mockArticles }) // Featured
+                json: async () => ({member: mockArticles}) // Featured
             })
             .mockResolvedValueOnce({
-                json: async () => ({ member: mockArticles, view: { next: '/api?page=2' } }) // Grid
+                json: async () => ({member: mockArticles, view: {next: '/api?page=2'}}) // Grid
             });
 
-        render(<MemoryRouter><HomePage /></MemoryRouter>);
+        render(<MemoryRouter><HomePage/></MemoryRouter>);
 
         await waitFor(() => {
             expect(screen.getByText('Article 1')).toBeInTheDocument();
@@ -64,28 +63,28 @@ describe('HomePage', () => {
 
     it('gère la recherche', async () => {
         global.fetch.mockResolvedValue({
-            json: async () => ({ member: [] })
+            json: async () => ({member: []})
         });
 
-        render(<MemoryRouter><HomePage /></MemoryRouter>);
+        render(<MemoryRouter><HomePage/></MemoryRouter>);
 
         const searchInput = screen.getByPlaceholderText(/Rechercher/i);
-        fireEvent.change(searchInput, { target: { value: 'Rolex' } });
+        fireEvent.change(searchInput, {target: {value: 'Rolex'}});
 
         await waitFor(() => {
             expect(global.fetch).toHaveBeenCalledWith(
                 expect.stringContaining('title=Rolex'),
                 expect.anything()
             );
-        }, { timeout: 1000 });
+        }, {timeout: 1000});
     });
 
     it('affiche un message si aucun résultat', async () => {
         global.fetch.mockResolvedValue({
-            json: async () => ({ member: [] })
+            json: async () => ({member: []})
         });
 
-        render(<MemoryRouter><HomePage /></MemoryRouter>);
+        render(<MemoryRouter><HomePage/></MemoryRouter>);
 
         await waitFor(() => {
             expect(screen.getByText(/Aucun résultat trouvé/i)).toBeInTheDocument();
@@ -94,15 +93,15 @@ describe('HomePage', () => {
 
     it('gère la pagination', async () => {
         global.fetch
-            .mockResolvedValueOnce({ json: async () => ({ member: [] }) })
+            .mockResolvedValueOnce({json: async () => ({member: []})})
             .mockResolvedValueOnce({
-                json: async () => ({ member: mockArticles, view: { next: 'exists' } })
+                json: async () => ({member: mockArticles, view: {next: 'exists'}})
             })
             .mockResolvedValueOnce({
-                json: async () => ({ member: [] })
+                json: async () => ({member: []})
             });
 
-        render(<MemoryRouter><HomePage /></MemoryRouter>);
+        render(<MemoryRouter><HomePage/></MemoryRouter>);
 
         await waitFor(() => expect(screen.getByText('Page 1')).toBeInTheDocument());
 

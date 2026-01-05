@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import CreateArticlePage from '../../../pages/CreateArticlePage';
 import * as KeycloakContext from '../../../KeycloakProvider';
 
+// Mock navigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
@@ -13,17 +14,20 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
+// Mock Keycloak
 vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
 }));
 
-let global = {};
-
-global.fetch = vi.fn();
-
 describe('CreateArticlePage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+
+        // CORRECTION : On mocke directement le fetch du navigateur (window)
+        // et on l'assigne aussi à global pour que vos expect(global.fetch) fonctionnent
+        const mockFetch = vi.fn();
+        window.fetch = mockFetch;
+        global.fetch = mockFetch;
     });
 
     it('redirige vers l\'accueil si l\'utilisateur n\'est pas connecté', () => {
@@ -58,26 +62,30 @@ describe('CreateArticlePage', () => {
             initialized: true
         });
 
+        // On configure le mock sur global.fetch (qui est maintenant lié à window.fetch)
         global.fetch
-            .mockResolvedValueOnce({
+            .mockResolvedValueOnce({ // 1. Upload image
                 ok: true,
                 json: async () => ({ url: '/uploads/image.jpg' })
             })
-            .mockResolvedValueOnce({
+            .mockResolvedValueOnce({ // 2. Création article
                 ok: true,
                 json: async () => ({ id: 1 })
             });
 
         render(<MemoryRouter><CreateArticlePage /></MemoryRouter>);
 
+        // Remplissage formulaire
         fireEvent.change(screen.getByLabelText(/Titre/i), { target: { value: 'Nike Air' } });
         fireEvent.change(screen.getByLabelText(/Prix/i), { target: { value: '150' } });
         fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Superbe paire' } });
 
+        // Upload fichier
         const file = new File(['(⌐□_□)'], 'chucknorris.png', { type: 'image/png' });
         const fileInput = document.getElementById('fileInput');
         fireEvent.change(fileInput, { target: { files: [file] } });
 
+        // Submit
         const submitBtn = screen.getByText("Publier l'annonce");
         fireEvent.click(submitBtn);
 
@@ -108,6 +116,8 @@ describe('CreateArticlePage', () => {
         fireEvent.click(screen.getByText("Publier l'annonce"));
 
         await waitFor(() => {
+            // Assurez-vous que ce texte correspond bien à celui renvoyé par votre composant
+            // lors d'une erreur (vérifiez le bloc catch dans CreateArticlePage.jsx)
             expect(screen.getByText(/Erreur lors de la création de l'article/i)).toBeInTheDocument();
         });
     });
