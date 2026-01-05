@@ -5,7 +5,7 @@ const ImageDropzone = ({
                            label,
                            placeholder = "Ajouter une image",
                            subtext = "Format supporté : JPG, PNG",
-                           icon: Icon = Upload,
+                           icon: IconComponent = Upload,
                            imagePreview,
                            onFileSelect,
                            onRemove,
@@ -55,7 +55,7 @@ const ImageDropzone = ({
                 ) : (
                     <div className="upload-placeholder">
                         <div className="icon-circle">
-                            <Icon size={28} strokeWidth={1.5} />
+                            <IconComponent size={28} strokeWidth={1.5} />
                         </div>
                         <h3>{placeholder}</h3>
                         <p>{subtext}</p>

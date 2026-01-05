@@ -1,6 +1,5 @@
 name: CI / CD Pipeline
 
-
 on:
   push:
     branches: [ "main", "develop", 'home-page-frontend']
@@ -45,31 +44,39 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           tools: composer
-          coverage: xdebug
+          coverage: pcov
 
       - name: Cache Composer (accélère les installs)
         uses: actions/cache@v3
         with:
-          path: vendor
-          key: composer-${{ hashFiles('**/composer.lock') }}
+          path: article-service/vendor
+          key: composer-${{ hashFiles('article-service/composer.lock') }}
 
       - name: Installation dépendances PHP
+        working-directory: ./article-service
         run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Migrations BDD
+        working-directory: ./article-service
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
         run: php bin/console doctrine:migrations:migrate --no-interaction
 
       - name: Audit sécurité des dépendances Composer
+        working-directory: ./article-service
         run: composer audit --no-interaction --format=table --locked
 
       - name: Tests PHPUnit + Couverture
+        working-directory: ./article-service
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
         run: vendor/bin/phpunit --coverage-clover=${{ env.PHP_COVERAGE }}
 
       - name: Artefact couverture backend
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
-          path: ${{ env.PHP_COVERAGE }}
+          path: article-service/${{ env.PHP_COVERAGE }}
           retention-days: 7
 
   frontend:
