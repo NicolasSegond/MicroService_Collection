@@ -122,7 +122,6 @@ http:
         - api-chain
       service: article-service
 
-
     # MEDIA/UPLOAD SERVICE - Route protégée par OIDC (Géré par Article Service)
     media-api:
       rule: "PathPrefix(`/api/media`)"
@@ -130,6 +129,15 @@ http:
         - web
       middlewares:
         - api-chain
+      service: article-service
+
+    # UPLOADS - Route publique (pas d'auth)
+    uploads:
+      rule: "PathPrefix(`/uploads`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
       service: article-service
 
     # TEST SERVICE - Route protégée par OIDC (Article Service)

@@ -8,7 +8,7 @@ use Doctrine\Persistence\ObjectManager;
 
 class UserInfoFixtures extends Fixture
 {
-    // IDs provenant de ton realm-export.json
+    // IDs provenant de realm-export.json
     public const USER_ADMIN_ID = 'admin-user-001';
     public const USER_TEST_ID = 'test-user-001';
 

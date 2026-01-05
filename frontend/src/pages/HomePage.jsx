@@ -13,6 +13,14 @@ const HomePage = () => {
     const [hasNextPage, setHasNextPage] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
 
+    const getImageUrl = (url) => {
+        if (!url) return 'https://placehold.co/600x400?text=No+Image';
+
+        if (url.startsWith('http')) return url;
+
+        return `${import.meta.env.VITE_API_URL}${url}`;
+    };
+
     // 1. Charger les articles "A la une" (Carousel)
     useEffect(() => {
         if (!initialized) return;
@@ -60,18 +68,15 @@ const HomePage = () => {
             } catch (err) {
                 console.error("Erreur chargement grille:", err);
             } finally {
-                // IMPORTANT : On arrête le loader dans tous les cas
                 setLoadingGrid(false);
             }
         };
 
-        // Debounce pour éviter trop d'appels pendant la frappe
         const timer = setTimeout(() => fetchGrid(), 300);
         return () => clearTimeout(timer);
 
     }, [page, searchTerm, initialized, authenticated, keycloak]);
 
-    // Helpers
     const nextSlide = () => {
         if (featuredArticles.length === 0) return;
         setCurrentSlide(curr => curr === featuredArticles.length - 1 ? 0 : curr + 1);
@@ -111,7 +116,7 @@ const HomePage = () => {
                             <div key={article.id} className="carousel-slide">
                                 <div
                                     className="slide-bg-blur"
-                                    style={{ backgroundImage: `url(${article.mainPhotoUrl})` }}
+                                    style={{ backgroundImage: `url(${getImageUrl(article.mainPhotoUrl)})` }}
                                 ></div>
 
                                 <div className="slide-content-wrapper">
@@ -132,7 +137,7 @@ const HomePage = () => {
                                         </button>
                                     </div>
                                     <div className="slide-visual">
-                                        <img src={article.mainPhotoUrl} alt={article.title} />
+                                        <img src={getImageUrl(article.mainPhotoUrl)} alt={article.title} />
                                     </div>
                                 </div>
                             </div>
@@ -158,7 +163,6 @@ const HomePage = () => {
                 </div>
             )}
 
-            {/* --- BARRE D'OUTILS --- */}
             <div className="toolbar-sticky">
                 <div className="search-bar">
                     <Search className="icon-search" size={18} />
@@ -181,7 +185,7 @@ const HomePage = () => {
                             {gridArticles.map((article) => (
                                 <div key={article.id} className="article-card">
                                     <div className="card-thumb">
-                                        <img src={article.mainPhotoUrl} alt={article.title} loading="lazy" />
+                                        <img src={getImageUrl(article.mainPhotoUrl)} alt={article.title} loading="lazy" />
                                         <button className="btn-fav"><Heart size={16} /></button>
                                         <span className="price-badge-mobile">{formatPrice(article.price)}</span>
                                     </div>
@@ -192,7 +196,7 @@ const HomePage = () => {
                                         </div>
                                         <div className="card-footer">
                                             <span className="seller-name">{article.owner?.fullName || "Membre"}</span>
-                                            <span className="post-date">Il y a 2j</span>
+                                            <span className="post-date">Récemment</span>
                                         </div>
                                     </div>
                                 </div>
