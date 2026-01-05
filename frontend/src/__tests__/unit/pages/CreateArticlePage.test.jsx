@@ -17,6 +17,8 @@ vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
 }));
 
+let global = {};
+
 global.fetch = vi.fn();
 
 describe('CreateArticlePage', () => {
