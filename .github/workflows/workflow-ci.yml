@@ -2,7 +2,7 @@ name: CI / CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop", 'home-page-frontend']
+    branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
 
@@ -236,6 +236,3 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
--Dsonar:
-  exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel:
-    php:
