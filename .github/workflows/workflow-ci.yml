@@ -2,7 +2,7 @@ name: CI / CD Pipeline
 
 on:
   push:
-    branches: [ "main", "develop", 'home-page-frontend']
+    branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
 
@@ -152,10 +152,10 @@ jobs:
             -Dsonar.organization=nicolassegond
             -Dsonar.sources=frontend/src,article-service/src
             -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__,article-service/tests
-            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php,article-service/tests/**
+            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php
+            -Dsonar.coverage.exclusions=article-service/src/Repository/**,article-service/src/Entity/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
             -Dsonar.php.coverage.reportPaths=article-service/${{ env.PHP_COVERAGE }}
-            -Dsonar.coverage.exclusions=article-service/src/Repository/**
 
   zap-local:
     name: Security • ZAP Scan (Local)
