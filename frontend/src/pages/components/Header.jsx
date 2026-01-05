@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useKeycloak } from '../../KeycloakProvider.jsx';
-import { ShoppingBag, User, Menu, X, LogOut, Settings } from 'lucide-react';
+import { ShoppingBag, User, Menu, X, LogOut, Settings, PlusCircle } from 'lucide-react';
 import './Header.css';
 
 const Header = () => {
@@ -10,7 +10,6 @@ const Header = () => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Fake profile photo for now (only if logged in)
     const userProfilePic = keycloak?.tokenParsed?.picture ||
         (keycloak?.tokenParsed?.preferred_username
             ? `https://ui-avatars.com/api/?name=${keycloak.tokenParsed.preferred_username}&size=200`
@@ -25,10 +24,11 @@ const Header = () => {
     };
 
     const handleProfile = () => {
-        // Redirect to your custom profile page
         navigate('/profile');
         setUserMenuOpen(false);
     };
+
+    const isLoggedIn = initialized && keycloak?.authenticated;
 
     return (
         <header className="header">
@@ -47,7 +47,6 @@ const Header = () => {
                     </Link>
                 </div>
 
-                {/* Menu de navigation desktop */}
                 <nav className="desktop-nav">
                     <Link to="/">Accueil</Link>
                     <Link to="/categories">Catégories</Link>
@@ -55,7 +54,27 @@ const Header = () => {
                 </nav>
 
                 <div className="header-right">
-                    {initialized && keycloak?.authenticated ? (
+                    {isLoggedIn && (
+                        <Link to="/sell" className="btn-sell" style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            background: '#000',
+                            color: 'white',
+                            padding: '0.6rem 1rem',
+                            borderRadius: '50px',
+                            textDecoration: 'none',
+                            fontWeight: '600',
+                            fontSize: '0.9rem',
+                            marginRight: '1rem',
+                            transition: 'transform 0.2s'
+                        }}>
+                            <PlusCircle size={18} />
+                            <span className="desktop-only">Vendre</span>
+                        </Link>
+                    )}
+
+                    {isLoggedIn ? (
                         <div className="user-menu-container">
                             <button
                                 className="user-profile-btn"
@@ -94,22 +113,17 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* Mobile Menu */}
             {mobileMenuOpen && (
                 <div className="mobile-menu">
                     <nav>
-                        <Link to="/" onClick={() => setMobileMenuOpen(false)}>
-                            Accueil
-                        </Link>
-                        <Link to="/categories" onClick={() => setMobileMenuOpen(false)}>
-                            Catégories
-                        </Link>
-                        <Link to="/featured" onClick={() => setMobileMenuOpen(false)}>
-                            Produits vedettes
-                        </Link>
-                        <Link to="/about" onClick={() => setMobileMenuOpen(false)}>
-                            À propos
-                        </Link>
+                        <Link to="/" onClick={() => setMobileMenuOpen(false)}>Accueil</Link>
+                        <Link to="/categories" onClick={() => setMobileMenuOpen(false)}>Catégories</Link>
+                        {isLoggedIn && (
+                            <Link to="/sell" onClick={() => setMobileMenuOpen(false)} style={{fontWeight: 'bold'}}>
+                                + Vendre un article
+                            </Link>
+                        )}
+                        <Link to="/about" onClick={() => setMobileMenuOpen(false)}>À propos</Link>
                     </nav>
                 </div>
             )}

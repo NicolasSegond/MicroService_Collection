@@ -17,3 +17,17 @@
     handler: allow
   mutators:
     - handler: header
+
+# Routes protégées - Uploads (Media)
+- id: media-service-protected
+  match:
+    url: <http|https>://<.*>/api/media<.*>
+    methods:
+      - POST
+      - OPTIONS
+  authenticators:
+    - handler: oauth2_introspection
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: header

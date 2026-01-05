@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Root from './pages/Root/Root.jsx';
 import HomePage from './pages/HomePage.jsx';
 import './App.css';
+import CreateArticlePage from "./pages/CreateArticlePage.jsx";
 
 function App() {
     const router = createBrowserRouter([
@@ -13,6 +14,10 @@ function App() {
                 {
                     path: '/',
                     element: <HomePage />
+                },
+                {
+                    path: '/sell',
+                    element: <CreateArticlePage />
                 },
                 {
                     path: '/categories',
