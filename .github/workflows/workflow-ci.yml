@@ -32,7 +32,7 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
-          
+
     steps:
       - name: Récupération du code
         uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
     name: Qualité • SonarCloud (multi-langages)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [backend, frontend]
+    needs: [ backend, frontend ]
 
     steps:
       - uses: actions/checkout@v4
@@ -134,13 +134,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
-          path: ${{ env.FRONT_COVERAGE }}
 
       - name: Download backend coverage artefact
         uses: actions/download-artifact@v4
         with:
           name: backend-coverage
-          path: article-service
 
       - name: Scan SonarCloud (PHP + JS/TS)
         uses: SonarSource/sonarcloud-github-action@v2
@@ -155,7 +153,7 @@ jobs:
             -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php
             -Dsonar.coverage.exclusions=article-service/src/Repository/**,article-service/src/Entity/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
-            -Dsonar.php.coverage.reportPaths=article-service/${{ env.PHP_COVERAGE }}
+            -Dsonar.php.coverage.reportPaths=${{ env.PHP_COVERAGE }}
 
   zap-local:
     name: Security • ZAP Scan (Local)
