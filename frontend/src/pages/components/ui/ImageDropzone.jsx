@@ -1,17 +1,20 @@
 import React from 'react';
-import {Upload, X, Image as ImageIcon, Icon} from 'lucide-react';
+import { Upload, X, Image as ImageIcon } from 'lucide-react';
 
 const ImageDropzone = ({
                            label,
                            placeholder = "Ajouter une image",
                            subtext = "Format supporté : JPG, PNG",
-                           icon: Icon = Upload,
+                           icon = Upload,
                            imagePreview,
                            onFileSelect,
                            onRemove,
                            error,
                            className = ""
                        }) => {
+
+    const Icon = icon;
+
     return (
         <div className={`form-group ${className}`} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             {label && (
