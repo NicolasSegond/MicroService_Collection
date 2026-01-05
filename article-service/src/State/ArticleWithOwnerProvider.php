@@ -10,14 +10,21 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Entity\Article;
 use App\Entity\UserInfo;
 use App\Repository\UserInfoRepository;
+// On garde les imports des classes concrètes pour l'attribut Autowire
 use ApiPlatform\Doctrine\Orm\State\CollectionProvider;
 use ApiPlatform\Doctrine\Orm\State\ItemProvider;
+use Symfony\Component\DependencyInjection\Attribute\Autowire; // <-- Important !
 
 class ArticleWithOwnerProvider implements ProviderInterface
 {
     public function __construct(
-        private CollectionProvider $collectionProvider,
-        private ItemProvider $itemProvider,
+        // On demande l'interface, mais on dit à Symfony d'injecter spécifiquement le service CollectionProvider
+        #[Autowire(service: CollectionProvider::class)]
+        private ProviderInterface $collectionProvider,
+
+        #[Autowire(service: ItemProvider::class)]
+        private ProviderInterface $itemProvider,
+
         private UserInfoRepository $userInfoRepository
     ) {}
 
