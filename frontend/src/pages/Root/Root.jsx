@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import Header from '../components/Header.jsx';
+import Footer from "../../components/layout/Footer.jsx";
+import Header from "../../components/layout/Header.jsx";
 
 const Root = () => {
     return (
@@ -9,6 +10,7 @@ const Root = () => {
             <main className="main-content">
                 <Outlet />
             </main>
+            <Footer />
         </div>
     );
 };

@@ -23,6 +23,7 @@ class UploadController extends AbstractController
         $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $safeFilename = $slugger->slug($originalFilename);
         $newFilename = $safeFilename.'-'.uniqid().'.'.$file->guessExtension();
+
         $destination = $this->getParameter('kernel.project_dir').'/public/uploads';
 
         try {
@@ -31,6 +32,7 @@ class UploadController extends AbstractController
             return new JsonResponse(['error' => 'Erreur lors de l\'upload : ' . $e->getMessage()], 500);
         }
 
+        // Return the URL of the uploaded file (assuming it's served from /uploads/)
         return new JsonResponse([
             'url' => '/uploads/'.$newFilename
         ]);

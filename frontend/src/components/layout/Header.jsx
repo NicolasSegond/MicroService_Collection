@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useKeycloak } from '../../KeycloakProvider.jsx';
-import { ShoppingBag, User, Menu, X, LogOut, Settings, PlusCircle } from 'lucide-react';
+import { Store, User, Menu, X, LogOut, Settings, Plus, Search } from 'lucide-react';
 import './Header.css';
 
 const Header = () => {
@@ -12,8 +12,8 @@ const Header = () => {
 
     const userProfilePic = keycloak?.tokenParsed?.picture ||
         (keycloak?.tokenParsed?.preferred_username
-            ? `https://ui-avatars.com/api/?name=${keycloak.tokenParsed.preferred_username}&size=200`
-            : 'https://ui-avatars.com/api/?name=User&size=200');
+            ? `https://ui-avatars.com/api/?name=${keycloak.tokenParsed.preferred_username}&background=E07A5F&color=fff&size=200`
+            : 'https://ui-avatars.com/api/?name=User&background=E07A5F&color=fff&size=200');
 
     const handleLogin = () => {
         keycloak.login();
@@ -42,35 +42,24 @@ const Header = () => {
                         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
                     <Link to="/" className="logo">
-                        <ShoppingBag size={32} />
-                        <span>Collector</span>
+                        <div className="logo-icon">
+                            <Store size={24} />
+                        </div>
+                        <span className="logo-text">Collector</span>
                     </Link>
                 </div>
 
                 <nav className="desktop-nav">
                     <Link to="/">Accueil</Link>
-                    <Link to="/categories">Catégories</Link>
-                    <Link to="/featured">Produits vedettes</Link>
+                    <Link to="/categories">Explorer</Link>
+                    <Link to="/about">À propos</Link>
                 </nav>
 
                 <div className="header-right">
                     {isLoggedIn && (
-                        <Link to="/sell" className="btn-sell" style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            background: '#000',
-                            color: 'white',
-                            padding: '0.6rem 1rem',
-                            borderRadius: '50px',
-                            textDecoration: 'none',
-                            fontWeight: '600',
-                            fontSize: '0.9rem',
-                            marginRight: '1rem',
-                            transition: 'transform 0.2s'
-                        }}>
-                            <PlusCircle size={18} />
-                            <span className="desktop-only">Vendre</span>
+                        <Link to="/sell" className="btn-sell">
+                            <Plus size={18} />
+                            <span>Vendre</span>
                         </Link>
                     )}
 
@@ -106,21 +95,22 @@ const Header = () => {
                         </div>
                     ) : (
                         <button className="login-btn" onClick={handleLogin}>
-                            <User size={20} />
-                            <span>Se connecter</span>
+                            <User size={18} />
+                            <span>Connexion</span>
                         </button>
                     )}
                 </div>
             </div>
 
             {mobileMenuOpen && (
-                <div className="mobile-menu">
+                <div className="mobile-menu" role="navigation" aria-label="Menu mobile">
                     <nav>
                         <Link to="/" onClick={() => setMobileMenuOpen(false)}>Accueil</Link>
-                        <Link to="/categories" onClick={() => setMobileMenuOpen(false)}>Catégories</Link>
+                        <Link to="/categories" onClick={() => setMobileMenuOpen(false)}>Explorer</Link>
                         {isLoggedIn && (
-                            <Link to="/sell" onClick={() => setMobileMenuOpen(false)} style={{fontWeight: 'bold'}}>
-                                + Vendre un article
+                            <Link to="/sell" onClick={() => setMobileMenuOpen(false)} className="mobile-sell-link">
+                                <Plus size={18} />
+                                Vendre un article
                             </Link>
                         )}
                         <Link to="/about" onClick={() => setMobileMenuOpen(false)}>À propos</Link>
