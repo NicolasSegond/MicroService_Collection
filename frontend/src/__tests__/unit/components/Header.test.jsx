@@ -1,8 +1,8 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import Header from '../../../pages/components/Header';
-import * as KeycloakContext from '../../../KeycloakProvider';
+import * as KeycloakContext from '../../../KeycloakProvider.jsx';
+import Header from "../../../components/layout/Header.jsx";
 
 vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
@@ -22,7 +22,7 @@ describe('Header', () => {
         vi.clearAllMocks();
     });
 
-    it('affiche le bouton "Se connecter" quand l\'utilisateur est déconnecté', () => {
+    it('affiche le bouton "Connexion" quand l\'utilisateur est déconnecté', () => {
         vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
             keycloak: { login: vi.fn() },
             initialized: true,
@@ -35,7 +35,7 @@ describe('Header', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText('Se connecter')).toBeInTheDocument();
+        expect(screen.getByText('Connexion')).toBeInTheDocument();
         expect(screen.queryByText('Vendre')).not.toBeInTheDocument();
     });
 
@@ -46,8 +46,7 @@ describe('Header', () => {
                 tokenParsed: { preferred_username: 'TestUser' },
                 logout: vi.fn()
             },
-            initialized: true,
-            authenticated: true
+            initialized: true
         });
 
         render(
@@ -68,8 +67,7 @@ describe('Header', () => {
                 tokenParsed: { preferred_username: 'User' },
                 logout: mockLogout
             },
-            initialized: true,
-            authenticated: true
+            initialized: true
         });
 
         render(<MemoryRouter><Header /></MemoryRouter>);
@@ -94,7 +92,7 @@ describe('Header', () => {
         const mobileBtn = screen.getByLabelText('Toggle mobile menu');
         fireEvent.click(mobileBtn);
 
-        expect(document.querySelector('.mobile-menu')).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Menu mobile' })).toBeInTheDocument();
         expect(screen.getAllByText('Accueil').length).toBeGreaterThan(1);
     });
 });

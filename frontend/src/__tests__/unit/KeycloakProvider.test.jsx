@@ -6,8 +6,7 @@ vi.mock('keycloak-js', () => ({
     default: createKeycloakMock()
 }));
 
-// Importer après avoir déclaré le mock
-import { KeycloakProvider } from '../../KeycloakProvider';
+import { KeycloakProvider } from '../../KeycloakProvider.jsx';
 import Keycloak from 'keycloak-js';
 
 const TestComponent = () => {

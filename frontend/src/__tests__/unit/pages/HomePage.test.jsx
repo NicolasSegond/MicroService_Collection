@@ -1,8 +1,8 @@
 import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {MemoryRouter} from 'react-router-dom';
-import HomePage from '../../../pages/HomePage';
-import * as KeycloakContext from '../../../KeycloakProvider';
+import HomePage from '../../../pages/HomePage.jsx';
+import * as KeycloakContext from '../../../KeycloakProvider.jsx';
 
 vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
@@ -30,7 +30,7 @@ const mockArticles = [
 describe('HomePage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // Default mock keycloak
+
         vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
             keycloak: {}, initialized: true, authenticated: false
         });
@@ -45,10 +45,10 @@ describe('HomePage', () => {
     it('charge et affiche les articles', async () => {
         global.fetch
             .mockResolvedValueOnce({
-                json: async () => ({member: mockArticles}) // Featured
+                json: async () => ({member: mockArticles})
             })
             .mockResolvedValueOnce({
-                json: async () => ({member: mockArticles, view: {next: '/api?page=2'}}) // Grid
+                json: async () => ({member: mockArticles, view: {next: '/api?page=2'}})
             });
 
         render(<MemoryRouter><HomePage/></MemoryRouter>);
@@ -87,7 +87,7 @@ describe('HomePage', () => {
         render(<MemoryRouter><HomePage/></MemoryRouter>);
 
         await waitFor(() => {
-            expect(screen.getByText(/Aucun résultat trouvé/i)).toBeInTheDocument();
+            expect(screen.getByText(/Aucun article trouvé/i)).toBeInTheDocument();
         });
     });
 

@@ -36,11 +36,13 @@ export default function HeroBanner({ featuredArticles = [] }) {
         if (featuredArticles.length <= 1) return;
 
         const interval = setInterval(() => {
-            nextSlide();
+            setCurrentSlide((prev) =>
+                prev === featuredArticles.length - 1 ? 0 : prev + 1
+            );
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [featuredArticles.length, currentSlide]);
+    }, [featuredArticles.length]);
 
     return (
         <section className="hero">

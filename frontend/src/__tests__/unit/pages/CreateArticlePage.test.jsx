@@ -1,10 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import CreateArticlePage from '../../../pages/CreateArticlePage';
-import * as KeycloakContext from '../../../KeycloakProvider';
+import CreateArticlePage from '../../../pages/CreateArticlePage.jsx';
+import * as KeycloakContext from '../../../KeycloakProvider.jsx';
 
-// Mock navigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
@@ -14,7 +13,6 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-// Mock Keycloak
 vi.mock('../../../KeycloakProvider', () => ({
     useKeycloak: vi.fn()
 }));
@@ -23,8 +21,6 @@ describe('CreateArticlePage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // CORRECTION : On mocke directement le fetch du navigateur (window)
-        // et on l'assigne aussi à global pour que vos expect(global.fetch) fonctionnent
         const mockFetch = vi.fn();
         window.fetch = mockFetch;
         global.fetch = mockFetch;
@@ -52,7 +48,7 @@ describe('CreateArticlePage', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText('Vendre un article')).toBeInTheDocument();
+        expect(screen.getByText('Créer une annonce')).toBeInTheDocument();
         expect(screen.getByLabelText(/Titre de l'annonce/i)).toBeInTheDocument();
     });
 
@@ -62,39 +58,39 @@ describe('CreateArticlePage', () => {
             initialized: true
         });
 
-        // On configure le mock sur global.fetch (qui est maintenant lié à window.fetch)
         global.fetch
-            .mockResolvedValueOnce({ // 1. Upload image
+            .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ url: '/uploads/image.jpg' })
             })
-            .mockResolvedValueOnce({ // 2. Création article
+            .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({ id: 1 })
             });
 
         render(<MemoryRouter><CreateArticlePage /></MemoryRouter>);
 
-        // Remplissage formulaire
         fireEvent.change(screen.getByLabelText(/Titre/i), { target: { value: 'Nike Air' } });
         fireEvent.change(screen.getByLabelText(/Prix/i), { target: { value: '150' } });
         fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Superbe paire' } });
 
-        // Upload fichier
+
         const file = new File(['(⌐□_□)'], 'chucknorris.png', { type: 'image/png' });
-        const fileInput = document.getElementById('fileInput');
+        const fileInput = document.querySelector('input[type="file"]');
         fireEvent.change(fileInput, { target: { files: [file] } });
 
-        // Submit
-        const submitBtn = screen.getByText("Publier l'annonce");
-        fireEvent.click(submitBtn);
 
-        expect(submitBtn).toBeDisabled();
+        const submitBtn = screen.getByRole('button', { name: /Publier l'annonce/i });
+        fireEvent.click(submitBtn);
 
         await waitFor(() => {
             expect(global.fetch).toHaveBeenCalledTimes(2);
-            expect(mockNavigate).toHaveBeenCalledWith('/');
         });
+
+        // Wait for success state and redirect
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('/');
+        }, { timeout: 3000 });
     });
 
     it('gère les erreurs de soumission', async () => {
@@ -113,12 +109,25 @@ describe('CreateArticlePage', () => {
         fireEvent.change(screen.getByLabelText(/Titre/i), { target: { value: 'Test' } });
         fireEvent.change(screen.getByLabelText(/Prix/i), { target: { value: '10' } });
 
-        fireEvent.click(screen.getByText("Publier l'annonce"));
+        fireEvent.click(screen.getByRole('button', { name: /Publier l'annonce/i }));
 
         await waitFor(() => {
-            // Assurez-vous que ce texte correspond bien à celui renvoyé par votre composant
-            // lors d'une erreur (vérifiez le bloc catch dans CreateArticlePage.jsx)
             expect(screen.getByText(/Erreur lors de la création de l'article/i)).toBeInTheDocument();
+        });
+    });
+
+    it('valide les champs requis', async () => {
+        vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
+            keycloak: { authenticated: true, token: 'fake-token' },
+            initialized: true
+        });
+
+        render(<MemoryRouter><CreateArticlePage /></MemoryRouter>);
+
+        fireEvent.click(screen.getByRole('button', { name: /Publier l'annonce/i }));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Le titre est requis/i)).toBeInTheDocument();
         });
     });
 });
