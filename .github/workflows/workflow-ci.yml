@@ -26,9 +26,8 @@ jobs:
           POSTGRES_PASSWORD: article_pass
           POSTGRES_DB: article_db
         ports: [ "5432:5432" ]
-        # Healthchecks pour attendre que Postgres soit prêt
         options: >-
-          --health-cmd="pg_isready -U symfony"
+          --health-cmd="pg_isready -U article_admin"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -65,6 +64,12 @@ jobs:
       - name: Audit sécurité des dépendances Composer
         working-directory: ./article-service
         run: composer audit --no-interaction --format=table --locked
+
+      - name: Préparation BDD de Test (Create & Fixtures)
+        working-directory: ./article-service
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
+        run: composer test:setup
 
       - name: Tests PHPUnit + Couverture
         working-directory: ./article-service
