@@ -75,6 +75,12 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
+        ],
+        "test:setup": [
+            "@php bin/console doctrine:database:create --env=test --if-not-exists",
+            "@php bin/console doctrine:schema:drop --env=test --force --full-database",
+            "@php bin/console doctrine:schema:create --env=test",
+            "@php bin/console doctrine:fixtures:load --env=test -n"
         ]
     },
     "conflict": {
@@ -89,6 +95,7 @@
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "fakerphp/faker": "^1.24",
+        "justinrainbow/json-schema": "^6.6",
         "phpunit/phpunit": "^12.5",
         "symfony/browser-kit": "7.3.*",
         "symfony/css-selector": "7.3.*"
