@@ -1,12 +1,11 @@
 # Oathkeeper Access Rules
 # Définit quelles routes nécessitent une authentification
 
-# Routes protégées - User Service
-- id: user-service-protected
+# Routes protégées - Article Service
+- id: article-service-protected
   match:
-    url: <http|https>://<.*>/api/users<.*>
+    url: <http|https>://<.*>/api/articles<.*>
     methods:
-      - GET
       - POST
       - PUT
       - PATCH
@@ -19,16 +18,12 @@
   mutators:
     - handler: header
 
-# Routes protégées - Article Service
-- id: article-service-protected
+# Routes protégées - Uploads (Media)
+- id: media-service-protected
   match:
-    url: <http|https>://<.*>/api/articles<.*>
+    url: <http|https>://<.*>/api/media<.*>
     methods:
-      - GET
       - POST
-      - PUT
-      - PATCH
-      - DELETE
       - OPTIONS
   authenticators:
     - handler: oauth2_introspection

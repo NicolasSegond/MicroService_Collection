@@ -1,7 +1,7 @@
 #---------------------
 # Base - Image commune
 #---------------------
-FROM php:8.2-fpm-alpine AS base
+FROM php:8.3-fpm-alpine AS base
 
 RUN apk add --no-cache --virtual .build-deps \
     autoconf \

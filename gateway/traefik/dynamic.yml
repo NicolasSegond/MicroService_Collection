@@ -104,22 +104,40 @@ http:
         - public-chain
       service: ping@internal
 
-    # USER SERVICE - Route protégée par OIDC
-    user-api:
-      rule: "PathPrefix(`/api/users`)"
+    # ARTICLE SERVICE - Route publique (pas d'auth)
+    article-api-public:
+      rule: "PathPrefix(`/api/articles`) && Method(`GET`)"
       entryPoints:
         - web
       middlewares:
-        - api-chain
-      service: user-service
+        - public-chain
+      service: article-service
 
     # ARTICLE SERVICE - Route protégée par OIDC
-    article-api:
-      rule: "PathPrefix(`/api/articles`)"
+    article-api-protected:
+      rule: "PathPrefix(`/api/articles`) && !Method(`GET`)"
       entryPoints:
         - web
       middlewares:
         - api-chain
+      service: article-service
+
+    # MEDIA/UPLOAD SERVICE - Route protégée par OIDC (Géré par Article Service)
+    media-api:
+      rule: "PathPrefix(`/api/media`)"
+      entryPoints:
+        - web
+      middlewares:
+        - api-chain
+      service: article-service
+
+    # UPLOADS - Route publique (pas d'auth)
+    uploads:
+      rule: "PathPrefix(`/uploads`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
       service: article-service
 
     # TEST SERVICE - Route protégée par OIDC (Article Service)
@@ -144,11 +162,6 @@ http:
   # SERVICES
   # ============================================
   services:
-    user-service:
-      loadBalancer:
-        servers:
-          - url: "http://user-service:8000"
-
     article-service:
       loadBalancer:
         servers:

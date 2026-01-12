@@ -196,6 +196,7 @@ services:
       DATABASE_URL: ${ARTICLE_DATABASE_URL}
       KAFKA_BROKERS: kafka:29092
       APP_ENV: prod
+      SKIP_MIGRATIONS: 'true'
     command: php bin/console app:consume-keycloak-events
     restart: unless-stopped
 

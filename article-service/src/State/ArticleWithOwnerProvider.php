@@ -3,23 +3,34 @@
 namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\State\ProviderInterface;
+use ApiPlatform\State\Pagination\PaginatorInterface;
+use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Entity\Article;
+use App\Entity\UserInfo;
 use App\Repository\UserInfoRepository;
+// On garde les imports des classes concrètes pour l'attribut Autowire
 use ApiPlatform\Doctrine\Orm\State\CollectionProvider;
 use ApiPlatform\Doctrine\Orm\State\ItemProvider;
+use Symfony\Component\DependencyInjection\Attribute\Autowire; // <-- Important !
 
 class ArticleWithOwnerProvider implements ProviderInterface
 {
     public function __construct(
-        private CollectionProvider $collectionProvider,
-        private ItemProvider $itemProvider,
+        // On demande l'interface, mais on dit à Symfony d'injecter spécifiquement le service CollectionProvider
+        #[Autowire(service: CollectionProvider::class)]
+        private ProviderInterface $collectionProvider,
+
+        #[Autowire(service: ItemProvider::class)]
+        private ProviderInterface $itemProvider,
+
         private UserInfoRepository $userInfoRepository
     ) {}
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
     {
-        if ($operation instanceof \ApiPlatform\Metadata\GetCollection) {
+        if ($operation instanceof GetCollection) {
             $articles = $this->collectionProvider->provide($operation, $uriVariables, $context);
             return $this->enrichArticles($articles);
         }
@@ -39,26 +50,35 @@ class ArticleWithOwnerProvider implements ProviderInterface
 
         foreach ($articles as $article) {
             $articleList[] = $article;
-            if ($article->getOwnerId()) {
+            if ($article instanceof Article && $article->getOwnerId()) {
                 $ownerIds[] = $article->getOwnerId();
             }
         }
 
-        if (empty($ownerIds)) {
-            return $articleList;
-        }
-
-        $users = $this->userInfoRepository->findBy(['id' => array_unique($ownerIds)]);
-        $usersMap = [];
-        foreach ($users as $user) {
-            $usersMap[$user->getId()] = $this->formatUserInfo($user);
-        }
-
-        foreach ($articleList as $article) {
-            $ownerId = $article->getOwnerId();
-            if ($ownerId && isset($usersMap[$ownerId])) {
-                $article->setOwner($usersMap[$ownerId]);
+        if (!empty($ownerIds)) {
+            $users = $this->userInfoRepository->findBy(['id' => array_unique($ownerIds)]);
+            $usersMap = [];
+            foreach ($users as $user) {
+                $usersMap[$user->getId()] = $this->formatUserInfo($user);
             }
+
+            foreach ($articleList as $article) {
+                if ($article instanceof Article) {
+                    $ownerId = $article->getOwnerId();
+                    if ($ownerId && isset($usersMap[$ownerId])) {
+                        $article->setOwner($usersMap[$ownerId]);
+                    }
+                }
+            }
+        }
+
+        if ($articles instanceof PaginatorInterface) {
+            return new TraversablePaginator(
+                new \ArrayIterator($articleList),
+                $articles->getCurrentPage(),
+                $articles->getItemsPerPage(),
+                $articles->getTotalItems()
+            );
         }
 
         return $articleList;
@@ -77,7 +97,7 @@ class ArticleWithOwnerProvider implements ProviderInterface
         }
     }
 
-    private function formatUserInfo(\App\Entity\UserInfo $user): array
+    private function formatUserInfo(UserInfo $user): array
     {
         return [
             'id' => $user->getId(),

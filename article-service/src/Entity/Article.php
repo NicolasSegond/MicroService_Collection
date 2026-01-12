@@ -2,6 +2,9 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -12,6 +15,8 @@ use App\State\ArticleWithOwnerProvider;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+
+// Ajout de l'import
 
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
 #[ApiResource(
@@ -35,50 +40,44 @@ use Symfony\Component\Serializer\Annotation\Groups;
         )
     ]
 )]
+#[ApiFilter(SearchFilter::class, properties: ['title' => 'ipartial'])]
 class Article
 {
-    public function __construct()
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->status = 'PUBLISHED';
-    }
-
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['article:read'])]
     private ?int $id = null;
-
     #[ORM\Column(length: 255)]
     #[Groups(['article:read', 'article:write'])]
     private ?string $title = null;
-
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['article:read', 'article:write'])]
     private ?string $description = null;
-
     #[ORM\Column]
     #[Groups(['article:read', 'article:write'])]
     private ?float $price = null;
-
     #[ORM\Column(length: 255)]
     #[Groups(['article:read', 'article:write'])]
     private ?string $mainPhotoUrl = null;
-
     #[ORM\Column(length: 255)]
     #[Groups(['article:read'])]
     private ?string $ownerId = null;
-
     #[Groups(['article:read'])]
+    #[ApiProperty(jsonSchemaContext: ['type' => ['object', 'null']])] // Correction ici
     private ?array $owner = null;
-
     #[ORM\Column(length: 50)]
     #[Groups(['article:read'])]
     private ?string $status = null;
-
     #[ORM\Column]
     #[Groups(['article:read'])]
     private ?\DateTimeImmutable $createdAt = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+        $this->status = 'PUBLISHED';
+    }
 
     public function getId(): ?int
     {
