@@ -87,7 +87,6 @@ describe('CreateArticlePage', () => {
             expect(global.fetch).toHaveBeenCalledTimes(2);
         });
 
-        // Wait for success state and redirect
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith('/');
         }, { timeout: 3000 });

@@ -91,7 +91,6 @@ describe('Homepage Flow Integration', () => {
     it('handles pagination through multiple pages', async () => {
         const user = userEvent.setup();
 
-        // Mock returns hasNextPage for page 1
         global.fetch.mockImplementation((url) => {
             if (url.includes('page=2')) {
                 return Promise.resolve({ json: async () => ({ member: mockArticlesPage2, view: {} }) });
@@ -102,7 +101,6 @@ describe('Homepage Flow Integration', () => {
         const router = createMemoryRouter(routes, { initialEntries: ['/'] });
         render(<RouterProvider router={router} />);
 
-        // Wait for articles to load
         await waitFor(() => {
             expect(screen.getByText('Nike Air Max')).toBeInTheDocument();
         }, { timeout: 2000 });
@@ -131,7 +129,6 @@ describe('Homepage Flow Integration', () => {
         const router = createMemoryRouter(routes, { initialEntries: ['/'] });
         render(<RouterProvider router={router} />);
 
-        // Wait for articles to load
         await waitFor(() => {
             expect(screen.getByText('Nike Air Max')).toBeInTheDocument();
         }, { timeout: 2000 });
@@ -150,12 +147,10 @@ describe('Homepage Flow Integration', () => {
         const router = createMemoryRouter(routes, { initialEntries: ['/'] });
         render(<RouterProvider router={router} />);
 
-        // Wait for loading text to disappear first (indicates fetch completed)
         await waitFor(() => {
             expect(screen.queryByText(/Chargement des articles/i)).not.toBeInTheDocument();
         }, { timeout: 2000 });
 
-        // Then check for empty state
         expect(screen.getByText(/Aucun article trouvé/i)).toBeInTheDocument();
     });
 

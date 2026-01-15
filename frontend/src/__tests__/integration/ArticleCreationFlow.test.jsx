@@ -30,7 +30,6 @@ describe('Article Creation Flow Integration', () => {
     beforeEach(() => {
         vi.clearAllMocks();
 
-        // Mock fetch global
         global.fetch = vi.fn();
 
         vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
@@ -46,7 +45,6 @@ describe('Article Creation Flow Integration', () => {
     it('completes full article creation flow', async () => {
         const user = userEvent.setup();
 
-        // On définit TOUS les comportements fetch dès le départ
         global.fetch.mockImplementation((url) => {
             if (url.includes('/api/articles') && !url.includes('POST')) {
                 return Promise.resolve({ ok: true, json: async () => ({ member: mockArticles }) });
@@ -63,11 +61,9 @@ describe('Article Creation Flow Integration', () => {
         const router = createMemoryRouter(routes, { initialEntries: ['/'] });
         render(<RouterProvider router={router} />);
 
-        // 1. Navigation
         const sellLink = await screen.findByRole('link', { name: /vendre/i });
         await user.click(sellLink);
 
-        // 2. Formulaire
         const titleInput = await screen.findByLabelText(/Titre/i);
         await user.type(titleInput, 'Jordan 1 Chicago');
         await user.type(screen.getByLabelText(/Prix/i), '250');
@@ -76,14 +72,11 @@ describe('Article Creation Flow Integration', () => {
         const fileInput = document.querySelector('input[type="file"]');
         await user.upload(fileInput, file);
 
-        // 3. Soumission
         const submitBtn = screen.getByRole('button', { name: /Publier l'annonce/i });
         await user.click(submitBtn);
 
-        // 4. Vérifier l'écran de succès (il reste 1500ms donc on a le temps de le voir)
         expect(await screen.findByText(/Article publié !/i)).toBeInTheDocument();
 
-        // 5. Redirection (On augmente le timeout pour couvrir les 1500ms du code)
         await waitFor(() => {
             expect(router.state.location.pathname).toBe('/');
         }, { timeout: 3000 });
@@ -92,7 +85,6 @@ describe('Article Creation Flow Integration', () => {
     it('disables submit button while submitting', async () => {
         const user = userEvent.setup();
 
-        // Empecher fetch de répondre immédiatement pour voir l'état loading
         let resolveUpload;
         const uploadPromise = new Promise(resolve => { resolveUpload = resolve; });
 
@@ -113,11 +105,9 @@ describe('Article Creation Flow Integration', () => {
         const submitBtn = screen.getByRole('button', { name: /Publier l'annonce/i });
         await user.click(submitBtn);
 
-        // Doit être désactivé pendant l'upload
         expect(submitBtn).toBeDisabled();
         expect(screen.getByText(/Publication.../i)).toBeInTheDocument();
 
-        // Libérer le fetch pour éviter les erreurs de console
         resolveUpload({ ok: true, json: async () => ({ url: '/img.jpg' }) });
     });
 });
