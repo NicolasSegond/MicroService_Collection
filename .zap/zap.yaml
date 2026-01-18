@@ -8,8 +8,8 @@ env:
         - "http://localhost:8000.*"
       excludePaths: []
   parameters:
-    failOnError: false
-    failOnWarning: false
+    failOnError: true
+    failOnWarning: true
     progressToStdout: true
     continueOnFailure: true
 
@@ -21,6 +21,15 @@ jobs:
       url: "http://localhost:8000/"
       maxDuration: 2
       maxDepth: 5
+
+  - type: alertFilter
+    alertFilters:
+      - ruleId: 10010
+        newRisk: "Info"
+      - ruleId: 10011
+        newRisk: "Info"
+      - ruleId: 10017
+        newRisk: "Info"
 
 
   # Manually request API endpoints that spider won't discover

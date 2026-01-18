@@ -221,8 +221,7 @@ jobs:
             -v ${{ github.workspace }}/zap-wrk:/home/zap:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap.sh -cmd \
-              -autorun /zap/wrk/zap.yaml \
-            || echo "ZAP scan completed with findings"
+              -autorun /zap/wrk/zap.yaml
           
           echo "=== ZAP Reports ==="
           ls -la zap-wrk/
