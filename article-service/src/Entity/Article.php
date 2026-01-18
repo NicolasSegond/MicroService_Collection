@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
@@ -37,6 +38,11 @@ use Symfony\Component\Serializer\Annotation\Groups;
             normalizationContext: ['groups' => ['article:read']],
             denormalizationContext: ['groups' => ['article:write']],
             processor: ArticleCreationProcessor::class
+        ),
+        new Patch(
+            normalizationContext: ['groups' => ['article:read']],
+            denormalizationContext: ['groups' => ['article:write']],
+            security: "is_granted('ROLE_ADMIN') or object.getOwnerId() == user.getUserIdentifier()"
         )
     ]
 )]
@@ -57,6 +63,9 @@ class Article
     #[ORM\Column]
     #[Groups(['article:read', 'article:write'])]
     private ?float $price = null;
+    #[ORM\Column(nullable: true)]
+    #[Groups(['article:read', 'article:write'])]
+    private ?float $shippingCost = null;
     #[ORM\Column(length: 255)]
     #[Groups(['article:read', 'article:write'])]
     private ?string $mainPhotoUrl = null;
@@ -116,6 +125,18 @@ class Article
     public function setPrice(float $price): static
     {
         $this->price = $price;
+
+        return $this;
+    }
+
+    public function getShippingCost(): ?float
+    {
+        return $this->shippingCost;
+    }
+
+    public function setShippingCost(?float $shippingCost): static
+    {
+        $this->shippingCost = $shippingCost;
 
         return $this;
     }

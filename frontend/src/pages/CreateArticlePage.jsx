@@ -24,7 +24,8 @@ const CreateArticlePage = () => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        price: ''
+        price: '',
+        shippingCost: ''
     });
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -128,6 +129,7 @@ const CreateArticlePage = () => {
                 title: formData.title,
                 description: formData.description,
                 price: parseFloat(formData.price),
+                shippingCost: formData.shippingCost ? parseFloat(formData.shippingCost) : 0,
                 mainPhotoUrl: photoUrl || 'https://placehold.co/600x400?text=No+Image',
                 status: 'PUBLISHED'
             };
@@ -277,6 +279,26 @@ const CreateArticlePage = () => {
                                 value={formData.price}
                                 onChange={handleInputChange}
                                 disabled={loading}
+                                min="0"
+                                step="0.01"
+                            />
+                            <span className="price-suffix">€</span>
+                        </div>
+                    </div>
+
+                    <div className="form-section">
+                        <label className="form-label" htmlFor="shippingCost">
+                            📦 Frais de port
+                        </label>
+                        <div className="price-input-wrapper">
+                            <input
+                                id="shippingCost"
+                                type="number"
+                                name="shippingCost"
+                                className="form-input price-input"
+                                placeholder="0"
+                                value={formData.shippingCost}
+                                onChange={handleInputChange}
                                 min="0"
                                 step="0.01"
                             />
