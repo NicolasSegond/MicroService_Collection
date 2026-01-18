@@ -14,7 +14,7 @@ class ArticleTest extends TestCase
     {
         $article = new Article();
 
-        $this->assertEquals('PUBLISHED', $article->getStatus());
+        $this->assertEquals('DRAFT', $article->getStatus());
         $this->assertInstanceOf(\DateTimeImmutable::class, $article->getCreatedAt());
         $this->assertNull($article->getId(), "Expected id to be null upon construction");
     }

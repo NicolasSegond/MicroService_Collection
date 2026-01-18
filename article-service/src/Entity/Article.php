@@ -47,6 +47,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Post(
             normalizationContext: ['groups' => ['article:read']],
             denormalizationContext: ['groups' => ['article:write']],
+            security: "is_granted('ROLE_USER')",
             processor: ArticleCreationProcessor::class
         ),
         new Patch(

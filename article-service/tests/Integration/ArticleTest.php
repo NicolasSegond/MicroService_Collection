@@ -4,14 +4,25 @@ namespace App\Tests\Integration;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Article;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class ArticleTest extends ApiTestCase
 {
     protected static ?bool $alwaysBootKernel = false;
 
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws DecodingExceptionInterface
+     * @throws ClientExceptionInterface
+     */
     public function testGetCollection(): void
     {
-        // Teste la récupération publique des articles
         static::createClient()->request('GET', '/api/articles');
 
         $this->assertResponseIsSuccessful();
@@ -20,21 +31,26 @@ class ArticleTest extends ApiTestCase
         $this->assertJsonContains([
             '@context' => '/api/contexts/Article',
             '@id' => '/api/articles',
-            '@type' => 'Collection', // <--- C'est ici que ça change (avant: hydra:Collection)
+            '@type' => 'Collection',
         ]);
 
         $this->assertMatchesResourceCollectionJsonSchema(Article::class);
     }
 
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws DecodingExceptionInterface
+     * @throws ClientExceptionInterface
+     */
     public function testCreateArticleAsAuthenticatedUser(): void
     {
         $client = static::createClient();
 
-        // Cet ID existe dans tes UserInfoFixtures (test-user-001)
         $userId = 'test-user-001';
         $token = $this->createMockJwt($userId);
 
-        // Teste la création avec authentification
         $client->request('POST', '/api/articles', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $token,
@@ -51,12 +67,11 @@ class ArticleTest extends ApiTestCase
         $this->assertResponseStatusCodeSame(201);
         $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
 
-        // Vérifie que le processeur a bien lié l'article au user du token
         $this->assertJsonContains([
             '@type' => 'Article',
             'title' => 'Article Test Intégration',
             'ownerId' => $userId,
-            'status' => 'PUBLISHED'
+            'status' => 'DRAFT'
         ]);
     }
 
