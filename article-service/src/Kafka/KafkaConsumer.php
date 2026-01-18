@@ -35,13 +35,11 @@ class KafkaConsumer
             return $message;
         }
 
-        // Erreurs non-fatales : pas de message disponible
         if ($message->err === RD_KAFKA_RESP_ERR__PARTITION_EOF ||
             $message->err === RD_KAFKA_RESP_ERR__TIMED_OUT) {
             return null;
         }
 
-        // Topic n'existe pas encore : attendre
         if ($message->err === RD_KAFKA_RESP_ERR_UNKNOWN_TOPIC_OR_PART) {
             return null;
         }

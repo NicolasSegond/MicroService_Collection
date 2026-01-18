@@ -10,7 +10,6 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Entity\Article;
 use App\Entity\UserInfo;
 use App\Repository\UserInfoRepository;
-// On garde les imports des classes concrètes pour l'attribut Autowire
 use ApiPlatform\Doctrine\Orm\State\CollectionProvider;
 use ApiPlatform\Doctrine\Orm\State\ItemProvider;
 use Symfony\Component\DependencyInjection\Attribute\Autowire; // <-- Important !
