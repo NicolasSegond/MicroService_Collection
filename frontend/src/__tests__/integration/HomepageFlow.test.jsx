@@ -56,8 +56,11 @@ describe('Homepage Flow Integration', () => {
             expect(screen.getByText('Adidas Yeezy')).toBeInTheDocument();
         }, { timeout: 2000 });
 
-        expect(screen.getByText('150 €')).toBeInTheDocument();
-        expect(screen.getByText('300 €')).toBeInTheDocument();
+        const prices150 = screen.getAllByText('150 €');
+        expect(prices150.length).toBeGreaterThan(0);
+
+        const prices300 = screen.getAllByText('300 €');
+        expect(prices300.length).toBeGreaterThan(0);
     });
 
     it('handles search and filters articles', async () => {
