@@ -197,7 +197,6 @@ jobs:
           mkdir -p zap-wrk/.ZAP zap-wrk/reports
           
           # Copy ZAP config files to writable location
-          cp .zap/rules.tsv zap-wrk/rules.tsv
           cp .zap/zap.yaml zap-wrk/zap.yaml
           
           # Update zap.yaml URLs to use traefik hostname (internal Docker network)
