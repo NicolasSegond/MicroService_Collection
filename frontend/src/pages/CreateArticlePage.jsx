@@ -130,8 +130,7 @@ const CreateArticlePage = () => {
                 description: formData.description,
                 price: parseFloat(formData.price),
                 shippingCost: formData.shippingCost ? parseFloat(formData.shippingCost) : 0,
-                mainPhotoUrl: photoUrl || 'https://placehold.co/600x400?text=No+Image',
-                status: 'PUBLISHED'
+                mainPhotoUrl: photoUrl || 'https://placehold.co/600x400?text=No+Image'
             };
 
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/articles`, {

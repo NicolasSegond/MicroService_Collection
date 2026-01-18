@@ -10,6 +10,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use App\Filter\ForcePublishedFilter;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
 use App\State\ArticleWithOwnerProvider;
@@ -26,12 +27,21 @@ use Symfony\Component\Serializer\Annotation\Groups;
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
+            filters: [ForcePublishedFilter::class],
+            provider: ArticleWithOwnerProvider::class
+        ),
+        new GetCollection(
+            uriTemplate: '/admin/articles',
+            paginationEnabled: true,
+            paginationItemsPerPage: 20,
+            normalizationContext: ['groups' => ['article:read']],
             provider: ArticleWithOwnerProvider::class
         ),
         new Get(
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
+            filters: [ForcePublishedFilter::class],
             provider: ArticleWithOwnerProvider::class
         ),
         new Post(
@@ -42,7 +52,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Patch(
             normalizationContext: ['groups' => ['article:read']],
             denormalizationContext: ['groups' => ['article:write']],
-            security: "is_granted('ROLE_ADMIN') or object.getOwnerId() == user.getUserIdentifier()"
         )
     ]
 )]
@@ -73,10 +82,10 @@ class Article
     #[Groups(['article:read'])]
     private ?string $ownerId = null;
     #[Groups(['article:read'])]
-    #[ApiProperty(jsonSchemaContext: ['type' => ['object', 'null']])] // Correction ici
+    #[ApiProperty(jsonSchemaContext: ['type' => ['object', 'null']])]
     private ?array $owner = null;
     #[ORM\Column(length: 50)]
-    #[Groups(['article:read'])]
+    #[Groups(['article:read', 'article:write'])]
     private ?string $status = null;
     #[ORM\Column]
     #[Groups(['article:read'])]
@@ -85,7 +94,7 @@ class Article
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->status = 'PUBLISHED';
+        $this->status = 'DRAFT';
     }
 
     public function getId(): ?int
