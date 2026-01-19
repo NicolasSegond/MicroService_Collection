@@ -4,6 +4,7 @@ namespace App\Tests\Integration;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Article;
+use Doctrine\ORM\EntityManagerInterface; // [Ajout]
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -13,6 +14,13 @@ use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 class ArticleTest extends ApiTestCase
 {
     protected static ?bool $alwaysBootKernel = false;
+    private EntityManagerInterface $entityManager;
+
+    protected function setUp(): void
+    {
+        self::bootKernel();
+        $this->entityManager = self::getContainer()->get('doctrine')->getManager();
+    }
 
     /**
      * @throws TransportExceptionInterface
@@ -35,6 +43,60 @@ class ArticleTest extends ApiTestCase
         ]);
 
         $this->assertMatchesResourceCollectionJsonSchema(Article::class);
+    }
+
+    public function testPublicCollectionExcludesDrafts(): void
+    {
+        $published = new Article();
+        $published->setTitle('Public Content ' . uniqid());
+        $published->setPrice(100);
+        $published->setMainPhotoUrl('/img/pub.jpg');
+        $published->setOwnerId('user1');
+        $published->setStatus('PUBLISHED');
+        $this->entityManager->persist($published);
+
+        $draft = new Article();
+        $draft->setTitle('Draft Secret ' . uniqid());
+        $draft->setPrice(50);
+        $draft->setMainPhotoUrl('/img/draft.jpg');
+        $draft->setOwnerId('user1');
+        $draft->setStatus('DRAFT');
+        $this->entityManager->persist($draft);
+
+        $this->entityManager->flush();
+
+        $client = static::createClient();
+        $response = $client->request('GET', '/api/articles');
+
+        $this->assertResponseIsSuccessful();
+
+        $data = $response->toArray();
+        $titles = array_column($data['hydra:member'] ?? [], 'title');
+
+        $this->assertContains($published->getTitle(), $titles, 'Les articles PUBLISHED doivent être visibles.');
+        $this->assertNotContains($draft->getTitle(), $titles, 'Les articles DRAFT ne doivent PAS être visibles sur l\'endpoint public.');
+    }
+
+    public function testAdminCollectionIncludesDrafts(): void
+    {
+        $draft = new Article();
+        $draft->setTitle('Admin Visible Draft ' . uniqid());
+        $draft->setPrice(50);
+        $draft->setMainPhotoUrl('/img/admin-draft.jpg');
+        $draft->setOwnerId('admin');
+        $draft->setStatus('DRAFT');
+        $this->entityManager->persist($draft);
+        $this->entityManager->flush();
+
+        $client = static::createClient();
+        $response = $client->request('GET', '/admin/articles');
+
+        $this->assertResponseIsSuccessful();
+
+        $data = $response->toArray();
+        $titles = array_column($data['hydra:member'] ?? [], 'title');
+
+        $this->assertContains($draft->getTitle(), $titles, 'Les brouillons DOIVENT être visibles sur l\'endpoint admin.');
     }
 
     /**

@@ -234,11 +234,11 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./observability/grafana/dashboards/provider.yml:/etc/grafana/provisioning/dashboards/dashboard.yaml
+      - ./observability/grafana/dashboards/provider.yml:/etc/grafana/provisioning/dashboards/provider.yml
       - ./observability/grafana/dashboards/json:/etc/grafana/provisioning/dashboards/json
     depends_on:
       - prometheus

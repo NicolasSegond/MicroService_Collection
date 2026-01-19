@@ -279,7 +279,7 @@
           "refId": "A"
         }
       ],
-      "title": "Requêtes en cours",
+      "title": "Taux de requêtes par méthode",
       "type": "gauge"
     },
     {
