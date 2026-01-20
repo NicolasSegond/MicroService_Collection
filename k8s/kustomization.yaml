@@ -4,41 +4,12 @@ kind: Kustomization
 namespace: marketplace
 
 resources:
-  # Namespace
   - namespace.yaml
-
-  # Secrets
-  - secrets/secrets.yaml
-
-  # ConfigMaps
-  - configmaps/oathkeeper-config.yaml
-  - configmaps/traefik-config.yaml
-  - configmaps/prometheus-config.yaml
-  - configmaps/frontend-config.yaml
-  - configmaps/keycloak-realm-k8s.yaml
-
-  # Databases (StatefulSets)
-  - databases/postgres-article.yaml
-  - databases/postgres-keycloak.yaml
-
-  # Messaging (StatefulSet)
-  - messaging/kafka.yaml
-
-  # Auth
-  - auth/keycloak.yaml
-  - auth/oathkeeper.yaml
-
-  # Gateway
-  - gateway/traefik.yaml
-  - gateway/ingress.yaml
-
-  # Services
-  - services/article-service.yaml
-  - services/frontend.yaml
-
-  # Monitoring
-  - monitoring/prometheus.yaml
-  - monitoring/grafana.yaml
+  - infrastructure.yaml  # Databases + Kafka + Secrets
+  - auth.yaml            # Keycloak
+  - services.yaml        # Article Service + Frontend
+  - gateway.yaml         # Traefik + Oathkeeper + Ingress
+  - monitoring.yaml      # Prometheus + Grafana
 
 labels:
   - pairs:
