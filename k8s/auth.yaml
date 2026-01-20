@@ -1,0 +1,239 @@
+# Auth: Keycloak + Realm Config
+---
+# ============================================
+# KEYCLOAK REALM CONFIGMAP
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: marketplace
+data:
+  realm-export.json: |
+    {
+      "id": "c189a043-a544-4a9f-93cf-14ae44045472",
+      "realm": "collector_realms",
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": true,
+      "registrationEmailAsUsername": true,
+      "rememberMe": true,
+      "loginWithEmailAllowed": true,
+      "resetPasswordAllowed": true,
+      "bruteForceProtected": true,
+      "accessTokenLifespan": 300,
+      "ssoSessionIdleTimeout": 1800,
+      "ssoSessionMaxLifespan": 36000,
+      "roles": {
+        "realm": [
+          {"id": "4d01f62c-bf45-4ced-bb2c-2f1ec87e9c14", "name": "ROLE_ADMIN", "composite": false, "clientRole": false, "containerId": "c189a043-a544-4a9f-93cf-14ae44045472"},
+          {"id": "f5bd3e83-2e49-40f3-8ef8-dea1e8a17406", "name": "default-roles-collector_realms", "composite": true, "composites": {"client": {"account": ["manage-account", "view-profile"]}}, "clientRole": false, "containerId": "c189a043-a544-4a9f-93cf-14ae44045472"},
+          {"id": "0498587f-5e6b-4ccb-81fe-d403e82615d5", "name": "ROLE_USER", "composite": false, "clientRole": false, "containerId": "c189a043-a544-4a9f-93cf-14ae44045472"}
+        ],
+        "client": {
+          "collector": [
+            {"id": "84bd8708-1275-4de6-b05c-a70a51d807f8", "name": "ADMIN", "clientRole": true, "containerId": "b158b7d7-35a0-415f-bb3c-8b36968d92c0"},
+            {"id": "1df4f8f6-0707-46a5-bc76-1cd14f713f3d", "name": "USER", "clientRole": true, "containerId": "b158b7d7-35a0-415f-bb3c-8b36968d92c0"}
+          ],
+          "collector_front": []
+        }
+      },
+      "defaultRole": {"id": "f5bd3e83-2e49-40f3-8ef8-dea1e8a17406", "name": "default-roles-collector_realms", "composite": true, "clientRole": false, "containerId": "c189a043-a544-4a9f-93cf-14ae44045472"},
+      "requiredCredentials": ["password"],
+      "users": [
+        {
+          "id": "test-user-001",
+          "username": "testuser",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Test",
+          "lastName": "User",
+          "email": "test@example.com",
+          "credentials": [{"type": "password", "value": "test123", "temporary": false}],
+          "realmRoles": ["default-roles-collector_realms"],
+          "clientRoles": {"collector": ["USER"]}
+        },
+        {
+          "id": "admin-user-001",
+          "username": "admin",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Admin",
+          "lastName": "User",
+          "email": "admin@example.com",
+          "credentials": [{"type": "password", "value": "admin123", "temporary": false}],
+          "realmRoles": ["default-roles-collector_realms"],
+          "clientRoles": {"collector": ["ADMIN"]}
+        }
+      ],
+      "clients": [
+        {
+          "id": "b158b7d7-35a0-415f-bb3c-8b36968d92c0",
+          "clientId": "collector",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G",
+          "redirectUris": ["/*"],
+          "webOrigins": ["/*"],
+          "standardFlowEnabled": true,
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect",
+          "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"]
+        },
+        {
+          "id": "25b329fd-f3a1-4b20-8880-4e005cf065ea",
+          "clientId": "collector_front",
+          "rootUrl": "http://localhost:3000",
+          "baseUrl": "http://localhost:3000",
+          "enabled": true,
+          "redirectUris": ["http://localhost:3000/*", "http://localhost:3000/callback", "http://localhost:3000/silent-check-sso.html"],
+          "webOrigins": ["http://localhost:3000"],
+          "standardFlowEnabled": true,
+          "publicClient": true,
+          "protocol": "openid-connect",
+          "attributes": {
+            "post.logout.redirect.uris": "http://localhost:3000/*",
+            "pkce.code.challenge.method": "S256"
+          },
+          "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"]
+        }
+      ],
+      "clientScopes": [
+        {"id": "32386d3d-a3c1-4067-bf56-10509d37a3fc", "name": "web-origins", "protocol": "openid-connect", "protocolMappers": [{"id": "ddca3b5f-9489-4a91-acc2-ff6d14b8b395", "name": "allowed web origins", "protocol": "openid-connect", "protocolMapper": "oidc-allowed-origins-mapper", "config": {"access.token.claim": "true"}}]},
+        {"id": "c7a546c6-5516-4ca3-b22d-fb2efdb20bf9", "name": "acr", "protocol": "openid-connect", "protocolMappers": [{"id": "fd6be551-8875-4396-9dca-3b7faebe35ff", "name": "acr loa level", "protocol": "openid-connect", "protocolMapper": "oidc-acr-mapper", "config": {"id.token.claim": "true", "access.token.claim": "true"}}]},
+        {"id": "08d85b8b-7242-4a37-9003-d8955553edba", "name": "roles", "protocol": "openid-connect", "protocolMappers": [{"id": "312e2b59-509c-449f-91cf-18461982856a", "name": "audience resolve", "protocol": "openid-connect", "protocolMapper": "oidc-audience-resolve-mapper", "config": {"access.token.claim": "true"}}, {"id": "131c3b82-d7a0-4948-a2bd-ebc5cd76c581", "name": "realm roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-realm-role-mapper", "config": {"multivalued": "true", "access.token.claim": "true", "claim.name": "realm_access.roles"}}, {"id": "e57bf3d8-5df5-4341-a651-6844aeef5a2a", "name": "client roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-client-role-mapper", "config": {"multivalued": "true", "access.token.claim": "true", "claim.name": "resource_access.${client_id}.roles"}}]},
+        {"id": "30927264-36f2-4772-be79-594d3641b2d8", "name": "email", "protocol": "openid-connect", "protocolMappers": [{"id": "6540f921-ccc8-4dbf-9ee1-a6eef5cae493", "name": "email", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "email", "access.token.claim": "true", "claim.name": "email"}}, {"id": "aeb22f8c-995b-43e1-b0ba-87a4c6ecac66", "name": "email verified", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-property-mapper", "config": {"user.attribute": "emailVerified", "access.token.claim": "true", "claim.name": "email_verified", "jsonType.label": "boolean"}}]},
+        {"id": "8c20fec5-b2a5-469e-85dd-e4888b8edc8f", "name": "profile", "protocol": "openid-connect", "protocolMappers": [{"id": "cae157a2-775c-41a2-bd4c-0b1aa0a31d01", "name": "full name", "protocol": "openid-connect", "protocolMapper": "oidc-full-name-mapper", "config": {"access.token.claim": "true"}}, {"id": "15fed8d0-ef01-4702-9609-b4a7f71f29e4", "name": "family name", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "lastName", "access.token.claim": "true", "claim.name": "family_name"}}, {"id": "4158a283-ac5b-476a-800a-947c481b7ae7", "name": "given name", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "firstName", "access.token.claim": "true", "claim.name": "given_name"}}, {"id": "e8f083a8-509e-43cc-8f77-64a1bdee7160", "name": "username", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": {"user.attribute": "username", "access.token.claim": "true", "claim.name": "preferred_username"}}]}
+      ],
+      "defaultDefaultClientScopes": ["profile", "email", "roles", "web-origins", "acr"],
+      "eventsEnabled": true,
+      "eventsListeners": ["jboss-logging"],
+      "enabledEventTypes": ["REGISTER", "UPDATE_PROFILE", "DELETE_ACCOUNT", "LOGIN", "LOGOUT"],
+      "adminEventsEnabled": true,
+      "attributes": {
+        "frontendUrl": "http://localhost:8080"
+      },
+      "keycloakVersion": "23.0.7"
+    }
+---
+# ============================================
+# KEYCLOAK
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: marketplace
+spec:
+  ports:
+    - port: 8080
+  selector:
+    app: keycloak
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: marketplace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command: ["/bin/sh", "-c", "until pg_isready -h keycloak-db -U keycloak -d keycloak; do sleep 2; done"]
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: keycloak-db-password
+        - name: wait-for-kafka
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/sh", "-c", "until kafka-broker-api-versions --bootstrap-server kafka-0.kafka.marketplace.svc.cluster.local:9092 2>/dev/null; do sleep 5; done"]
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:23.0
+          args: ["start-dev", "--import-realm"]
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+          env:
+            - name: KC_DB
+              value: "postgres"
+            - name: KC_DB_URL
+              value: "jdbc:postgresql://keycloak-db:5432/keycloak"
+            - name: KC_DB_USERNAME
+              value: "keycloak"
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: keycloak-db-password
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: admin-user
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secrets
+                  key: admin-password
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_HOSTNAME
+              value: "localhost"
+            - name: KC_HOSTNAME_PORT
+              value: "8080"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+            - name: KAFKA_TOPIC
+              value: "keycloak-events"
+            - name: KAFKA_ADMIN_TOPIC
+              value: "keycloak-admin-events"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-0.kafka.marketplace.svc.cluster.local:29092"
+            - name: KAFKA_CLIENT_ID
+              value: "keycloak"
+            - name: KAFKA_EVENTS
+              value: "REGISTER,UPDATE_PROFILE,DELETE_ACCOUNT,LOGIN,LOGOUT"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 30
+      volumes:
+        - name: realm-config
+          configMap:
+            name: keycloak-realm
