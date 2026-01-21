@@ -4,7 +4,7 @@ namespace App\Tests\Integration;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Article;
-use Doctrine\ORM\EntityManagerInterface; // [Ajout]
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -47,64 +47,61 @@ class ArticleTest extends ApiTestCase
 
     public function testPublicCollectionExcludesDrafts(): void
     {
-        $client = static::createClient();
-        $entityManager = $client->getContainer()->get('doctrine')->getManager();
-
-        $testId = uniqid('test_');
-
         $published = new Article();
-        $published->setTitle($testId . '_published');
+        $published->setTitle('Public Content ' . uniqid());
         $published->setPrice(100);
         $published->setMainPhotoUrl('/img/pub.jpg');
         $published->setOwnerId('user1');
         $published->setStatus('PUBLISHED');
-        $entityManager->persist($published);
+        $this->entityManager->persist($published);
 
         $draft = new Article();
-        $draft->setTitle($testId . '_draft');
+        $draft->setTitle('Draft Secret ' . uniqid());
         $draft->setPrice(50);
         $draft->setMainPhotoUrl('/img/draft.jpg');
         $draft->setOwnerId('user1');
         $draft->setStatus('DRAFT');
-        $entityManager->persist($draft);
+        $this->entityManager->persist($draft);
 
-        $entityManager->flush();
+        $this->entityManager->flush();
 
-        // Filter by test ID to isolate test data
-        $response = $client->request('GET', '/api/articles?title=' . $testId);
+        $client = static::createClient();
 
+        // Chercher l'article PUBLISHED par son titre (évite les problèmes de pagination)
+        $response = $client->request('GET', '/api/articles?title=' . urlencode($published->getTitle()));
         $this->assertResponseIsSuccessful();
-
         $data = $response->toArray();
-        $titles = array_column($data['member'] ?? [], 'title');
-
+        $titles = array_column($data['member'] ?? $data['hydra:member'] ?? [], 'title');
         $this->assertContains($published->getTitle(), $titles, 'Les articles PUBLISHED doivent être visibles.');
+
+        // Chercher l'article DRAFT - il ne doit PAS apparaître
+        $response = $client->request('GET', '/api/articles?title=' . urlencode($draft->getTitle()));
+        $this->assertResponseIsSuccessful();
+        $data = $response->toArray();
+        $titles = array_column($data['member'] ?? $data['hydra:member'] ?? [], 'title');
         $this->assertNotContains($draft->getTitle(), $titles, 'Les articles DRAFT ne doivent PAS être visibles sur l\'endpoint public.');
     }
 
     public function testAdminCollectionIncludesDrafts(): void
     {
-        $client = static::createClient();
-        $entityManager = $client->getContainer()->get('doctrine')->getManager();
-
-        $testId = uniqid('test_');
-
         $draft = new Article();
-        $draft->setTitle($testId . '_draft');
+        $draft->setTitle('Admin Visible Draft ' . uniqid());
         $draft->setPrice(50);
         $draft->setMainPhotoUrl('/img/admin-draft.jpg');
         $draft->setOwnerId('admin');
         $draft->setStatus('DRAFT');
-        $entityManager->persist($draft);
-        $entityManager->flush();
+        $this->entityManager->persist($draft);
+        $this->entityManager->flush();
 
-        // Filter by test ID to isolate test data
-        $response = $client->request('GET', '/api/admin/articles?title=' . $testId);
+        $client = static::createClient();
+
+        // Chercher l'article DRAFT par son titre sur l'endpoint admin
+        $response = $client->request('GET', '/api/admin/articles?title=' . urlencode($draft->getTitle()));
 
         $this->assertResponseIsSuccessful();
 
         $data = $response->toArray();
-        $titles = array_column($data['member'] ?? [], 'title');
+        $titles = array_column($data['member'] ?? $data['hydra:member'] ?? [], 'title');
 
         $this->assertContains($draft->getTitle(), $titles, 'Les brouillons DOIVENT être visibles sur l\'endpoint admin.');
     }
