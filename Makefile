@@ -54,9 +54,15 @@ k8s-delete: ## Supprime Minikube
 build-images: ## Construit les images Docker
 	@eval $$(minikube docker-env) && \
 	docker build -t article-service:prod --target prod ./article-service && \
-	docker build -t frontend:prod --target prod ./frontend
+	docker build -t frontend:prod --target prod ./frontend && \
+	docker build -t keycloak:local ./keycloak
 
-k8s-deploy: ## Déploie sur Kubernetes
+k8s-secrets: ## Crée les secrets depuis .env
+	@kubectl create namespace marketplace --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl create secret generic app-secrets --from-env-file=.env -n marketplace --dry-run=client -o yaml | kubectl apply -f -
+	@echo "✓ Secrets créés"
+
+k8s-deploy: k8s-secrets ## Déploie sur K8s
 	kubectl apply -k k8s/
 
 k8s-setup: ## Initialise (migrations + données)

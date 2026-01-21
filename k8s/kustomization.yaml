@@ -5,11 +5,20 @@ namespace: marketplace
 
 resources:
   - namespace.yaml
-  - infrastructure.yaml  # Databases + Kafka + Secrets
-  - auth.yaml            # Keycloak
-  - services.yaml        # Article Service + Frontend
-  - gateway.yaml         # Traefik + Oathkeeper + Ingress
-  - monitoring.yaml      # Prometheus + Grafana
+  - infrastructure.yaml
+  - auth.yaml
+  - services.yaml
+  - gateway.yaml
+  - monitoring.yaml
+
+# Génère les ConfigMaps depuis les fichiers existants
+configMapGenerator:
+  - name: grafana-dashboards
+    files:
+      - grafana-dashboards/microservices_dashboard.json
+
+generatorOptions:
+  disableNameSuffixHash: true
 
 labels:
   - pairs:

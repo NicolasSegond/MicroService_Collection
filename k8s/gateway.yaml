@@ -7,12 +7,15 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: traefik-config
-  namespace: marketplace
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
 data:
   traefik.yaml: |
     api:
       dashboard: true
-      insecure: true
+      insecure: false
     ping:
       entryPoint: traefik
     metrics:
@@ -20,7 +23,7 @@ data:
         addEntryPointsLabels: true
         addRoutersLabels: true
     log:
-      level: DEBUG
+      level: INFO
       format: json
     accessLog:
       format: json
@@ -51,11 +54,14 @@ data:
             accessControlMaxAge: 3600
             accessControlAllowOriginList:
               - "http://localhost:3000"
+              - "http://marketplace.local"
         security-headers:
           headers:
             customResponseHeaders:
               X-Content-Type-Options: "nosniff"
               X-Frame-Options: "DENY"
+              X-XSS-Protection: "1; mode=block"
+              Referrer-Policy: "strict-origin-when-cross-origin"
         rate-limit:
           rateLimit:
             average: 100
@@ -105,7 +111,10 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: oathkeeper-config
-  namespace: marketplace
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
 data:
   config.yaml: |
     serve:
@@ -114,7 +123,7 @@ data:
       api:
         port: 4456
     log:
-      level: debug
+      level: info
       format: json
     errors:
       fallback: [json]
@@ -122,7 +131,7 @@ data:
         json:
           enabled: true
           config:
-            verbose: true
+            verbose: false
     access_rules:
       repositories:
         - file:///etc/oathkeeper/rules.yaml
@@ -178,19 +187,28 @@ data:
         - handler: header
 ---
 # ============================================
-# TRAEFIK
+# TRAEFIK SERVICE ACCOUNT
 # ============================================
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: traefik
-  namespace: marketplace
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
 ---
+# ============================================
+# TRAEFIK SERVICE
+# ============================================
 apiVersion: v1
 kind: Service
 metadata:
   name: traefik
-  namespace: marketplace
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
 spec:
   ports:
     - name: web
@@ -200,11 +218,17 @@ spec:
   selector:
     app: traefik
 ---
+# ============================================
+# TRAEFIK DEPLOYMENT
+# ============================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: traefik
-  namespace: marketplace
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
 spec:
   replicas: 1
   selector:
@@ -214,24 +238,46 @@ spec:
     metadata:
       labels:
         app: traefik
+        app.kubernetes.io/name: traefik
+        app.kubernetes.io/component: gateway
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
     spec:
       serviceAccountName: traefik
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
       initContainers:
         - name: wait-for-keycloak
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.5.0
           command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
         - name: wait-for-oathkeeper
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.5.0
           command: ["/bin/sh", "-c", "until curl -sf http://oathkeeper:4456/health/alive; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
       containers:
         - name: traefik
           image: traefik:v3.2
           ports:
             - containerPort: 80
+              name: web
             - containerPort: 8080
+              name: dashboard
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           args: ["--configFile=/etc/traefik/traefik.yaml"]
           volumeMounts:
             - name: traefik-config
@@ -249,19 +295,28 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
       volumes:
         - name: traefik-config
           configMap:
             name: traefik-config
 ---
 # ============================================
-# OATHKEEPER
+# OATHKEEPER SERVICE
 # ============================================
 apiVersion: v1
 kind: Service
 metadata:
   name: oathkeeper
-  namespace: marketplace
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
 spec:
   ports:
     - name: proxy
@@ -271,11 +326,17 @@ spec:
   selector:
     app: oathkeeper
 ---
+# ============================================
+# OATHKEEPER DEPLOYMENT
+# ============================================
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: oathkeeper
-  namespace: marketplace
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
 spec:
   replicas: 1
   selector:
@@ -285,24 +346,39 @@ spec:
     metadata:
       labels:
         app: oathkeeper
+        app.kubernetes.io/name: oathkeeper
+        app.kubernetes.io/component: auth
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
       initContainers:
         - name: wait-for-keycloak
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.5.0
           command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
       containers:
         - name: oathkeeper
           image: oryd/oathkeeper:v0.40
           args: ["serve", "--config", "/etc/oathkeeper/config.yaml"]
           ports:
             - containerPort: 4455
+              name: proxy
             - containerPort: 4456
+              name: api
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
           env:
             - name: KC_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: keycloak-secrets
-                  key: client-secret
+                  name: app-secrets
+                  key: KC_CLIENT_SECRET
           volumeMounts:
             - name: oathkeeper-config
               mountPath: /etc/oathkeeper
@@ -319,19 +395,27 @@ spec:
               port: 4456
             initialDelaySeconds: 10
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/alive
+              port: 4456
+            initialDelaySeconds: 30
+            periodSeconds: 30
       volumes:
         - name: oathkeeper-config
           configMap:
             name: oathkeeper-config
 ---
 # ============================================
-# INGRESS (pour accès via hostname)
+# INGRESS
 # ============================================
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: marketplace-ingress
-  namespace: marketplace
+  labels:
+    app.kubernetes.io/name: marketplace-ingress
+    app.kubernetes.io/component: networking
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:

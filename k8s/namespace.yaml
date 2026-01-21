@@ -1,8 +1,11 @@
+# Namespace for Marketplace microservices
 apiVersion: v1
 kind: Namespace
 metadata:
   name: marketplace
   labels:
+    name: marketplace
     app.kubernetes.io/name: marketplace
+    app.kubernetes.io/part-of: marketplace-platform
   annotations:
-    description: "Marketplace Microservices Demo"
+    description: "Marketplace Microservices Platform"
