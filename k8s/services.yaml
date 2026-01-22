@@ -62,7 +62,7 @@ spec:
         fsGroup: 101
       containers:
         - name: frontend
-          image: frontend:prod
+          image: frontend
           imagePullPolicy: Never  # Minikube: use local images
           ports:
             - containerPort: 3000
@@ -176,7 +176,7 @@ spec:
             runAsUser: 1000
       containers:
         - name: article-service
-          image: article-service:prod
+          image: article-service
           imagePullPolicy: Never  # Minikube: use local images
           ports:
             - containerPort: 8000
@@ -186,7 +186,7 @@ spec:
             readOnlyRootFilesystem: false
           env:
             - name: APP_ENV
-              value: "prod"
+              value: "dev"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -278,7 +278,7 @@ spec:
             runAsUser: 100
       containers:
         - name: consumer
-          image: article-service:prod
+          image: article-service
           imagePullPolicy: Never  # Minikube: use local images
           command: ["php", "bin/console", "app:consume-keycloak-events"]
           securityContext:
@@ -286,7 +286,7 @@ spec:
             readOnlyRootFilesystem: false
           env:
             - name: APP_ENV
-              value: "prod"
+              value: "dev"
             - name: SKIP_MIGRATIONS
               value: "true"
             - name: DATABASE_URL

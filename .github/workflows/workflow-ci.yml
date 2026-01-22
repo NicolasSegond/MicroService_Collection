@@ -160,6 +160,79 @@ jobs:
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
             -Dsonar.php.coverage.reportPaths=${{ env.PHP_COVERAGE }}
 
+  perf_tests:
+    name: Performance • JMeter Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [backend]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Decrypt environment file
+        env:
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"$ENCRYPTION_KEY"
+
+      - name: Start services
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for Keycloak..."
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/health/ready; do sleep 5; done'
+
+          echo "Waiting for API..."
+          timeout 120 bash -c 'until curl -sf http://localhost:8000/api/articles; do sleep 5; done'
+
+          echo "All services ready!"
+
+      - name: Create JMeter output directory
+        run: mkdir -p tests/perf/report
+
+      - name: Run JMeter tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}/tests/perf:/jmeter \
+            apache/jmeter:5.6.2 \
+            -n \
+            -t /jmeter/test.jmx \
+            -l /jmeter/results.jtl \
+            -e -o /jmeter/report \
+            -Japi.host=localhost \
+            -Japi.port=8000 \
+            -Jkeycloak.host=localhost \
+            -Jkeycloak.port=8080 \
+            -Jusers.public=10 \
+            -Jusers.auth=5 \
+            -Jusers.stress=20 \
+            -Jrampup=5 \
+            -Jrampup.stress=30
+
+      - name: Upload JMeter HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jmeter-report
+          path: tests/perf/report/
+          retention-days: 7
+
+      - name: Upload JMeter Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jmeter-results
+          path: tests/perf/results.jtl
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
+
   zap-local:
     name: Security • ZAP Scan (Local)
     runs-on: ubuntu-latest
