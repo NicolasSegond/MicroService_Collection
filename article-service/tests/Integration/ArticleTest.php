@@ -47,31 +47,36 @@ class ArticleTest extends ApiTestCase
 
     public function testPublicCollectionExcludesDrafts(): void
     {
+        $client = static::createClient();
+        $entityManager = $client->getContainer()->get('doctrine')->getManager();
+
+        $testId = uniqid('test_');
+
         $published = new Article();
-        $published->setTitle('Public Content ' . uniqid());
+        $published->setTitle($testId . '_published');
         $published->setPrice(100);
         $published->setMainPhotoUrl('/img/pub.jpg');
         $published->setOwnerId('user1');
         $published->setStatus('PUBLISHED');
-        $this->entityManager->persist($published);
+        $entityManager->persist($published);
 
         $draft = new Article();
-        $draft->setTitle('Draft Secret ' . uniqid());
+        $draft->setTitle($testId . '_draft');
         $draft->setPrice(50);
         $draft->setMainPhotoUrl('/img/draft.jpg');
         $draft->setOwnerId('user1');
         $draft->setStatus('DRAFT');
-        $this->entityManager->persist($draft);
+        $entityManager->persist($draft);
 
-        $this->entityManager->flush();
+        $entityManager->flush();
 
-        $client = static::createClient();
-        $response = $client->request('GET', '/api/articles');
+        // Filter by test ID to isolate test data
+        $response = $client->request('GET', '/api/articles?title=' . $testId);
 
         $this->assertResponseIsSuccessful();
 
         $data = $response->toArray();
-        $titles = array_column($data['hydra:member'] ?? [], 'title');
+        $titles = array_column($data['member'] ?? [], 'title');
 
         $this->assertContains($published->getTitle(), $titles, 'Les articles PUBLISHED doivent être visibles.');
         $this->assertNotContains($draft->getTitle(), $titles, 'Les articles DRAFT ne doivent PAS être visibles sur l\'endpoint public.');
@@ -79,22 +84,27 @@ class ArticleTest extends ApiTestCase
 
     public function testAdminCollectionIncludesDrafts(): void
     {
+        $client = static::createClient();
+        $entityManager = $client->getContainer()->get('doctrine')->getManager();
+
+        $testId = uniqid('test_');
+
         $draft = new Article();
-        $draft->setTitle('Admin Visible Draft ' . uniqid());
+        $draft->setTitle($testId . '_draft');
         $draft->setPrice(50);
         $draft->setMainPhotoUrl('/img/admin-draft.jpg');
         $draft->setOwnerId('admin');
         $draft->setStatus('DRAFT');
-        $this->entityManager->persist($draft);
-        $this->entityManager->flush();
+        $entityManager->persist($draft);
+        $entityManager->flush();
 
-        $client = static::createClient();
-        $response = $client->request('GET', '/admin/articles');
+        // Filter by test ID to isolate test data
+        $response = $client->request('GET', '/api/admin/articles?title=' . $testId);
 
         $this->assertResponseIsSuccessful();
 
         $data = $response->toArray();
-        $titles = array_column($data['hydra:member'] ?? [], 'title');
+        $titles = array_column($data['member'] ?? [], 'title');
 
         $this->assertContains($draft->getTitle(), $titles, 'Les brouillons DOIVENT être visibles sur l\'endpoint admin.');
     }
