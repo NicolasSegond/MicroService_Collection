@@ -1,6 +1,7 @@
 # Makefile - Marketplace Microservices
 
-.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images
+.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images \
+        demo-crash demo-scale
 
 CYAN := \033[36m
 GREEN := \033[32m
@@ -32,6 +33,13 @@ help: ## Affiche cette aide
 	@echo "     $(CYAN)make k8s-delete$(RESET)    Supprime tout"
 	@echo "     $(CYAN)make k8s-status$(RESET)    État des pods"
 	@echo "     $(CYAN)make k8s-logs$(RESET)      Logs (make k8s-logs p=article-service)"
+	@echo ""
+	@echo "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
+	@echo "$(GREEN)  DEMOS K8S$(RESET)"
+	@echo "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
+	@echo ""
+	@echo "     $(CYAN)make demo-crash$(RESET)    Auto-healing (kill + watch rebuild)"
+	@echo "     $(CYAN)make demo-scale$(RESET)    Scalabilité (make demo-scale r=3)"
 	@echo ""
 
 # ============================================
@@ -66,7 +74,7 @@ k8s-up:
 	@echo "$(BOLD)$(CYAN)═══ INSTALLATION KUBERNETES ═══$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)[1/4]$(RESET) Création du cluster..."
-	@minikube start --cpus=4 --memory=8192 --driver=docker
+	@minikube start --cpus=2 --memory=4192 --driver=docker
 	@minikube addons enable ingress >/dev/null 2>&1
 	@minikube addons enable metrics-server >/dev/null 2>&1
 	@echo "$(GREEN)  ✓ Cluster créé$(RESET)"
@@ -112,11 +120,41 @@ k8s-delete:
 	minikube delete
 
 k8s-forward:
-	@chmod +x ./scripts/k8s-forward.sh && ./scripts/k8s-forward.sh
+	@chmod +x ./k8s/scripts/k8s-forward.sh && ./k8s/scripts/k8s-forward.sh
 
 k8s-status:
 	@kubectl get pods -n marketplace
 
 k8s-logs:
 	@if [ -z "$(p)" ]; then kubectl get pods -n marketplace; else kubectl logs -f -n marketplace -l app=$(p); fi
+
+# ============================================
+# DEMOS KUBERNETES
+# ============================================
+
+demo-crash: ## Démo auto-healing : kill le pod avec trafic intense
+	@echo ""
+	@echo "$(BOLD)$(CYAN)═══ DEMO AUTO-HEALING ═══$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)1. Lancement du trafic (30 sec en arrière-plan)...$(RESET)"
+	@(for i in $$(seq 1 300); do curl -s -o /dev/null -w "%{http_code} " http://localhost:8000/api/articles; sleep 0.1; done) &
+	@sleep 1
+	@kubectl get pods -n marketplace -l app=article-service
+	@echo ""
+	@echo "$(RED)2. CRASH du pod...$(RESET)"
+	@kubectl delete pods -n marketplace -l app=article-service --wait=false
+	@echo ""
+	@echo "$(YELLOW)3. Watch reconstruction :$(RESET)"
+	@kubectl get pods -n marketplace -l app=article-service -w
+
+demo-scale: ## Démo scalabilité : scale article-service (make demo-scale r=3)
+	@echo ""
+	@echo "$(BOLD)$(CYAN)═══ DEMO SCALABILITÉ ═══$(RESET)"
+	@echo ""
+	@REPLICAS=$${r:-3} && \
+	echo "$(YELLOW)Scaling article-service à $$REPLICAS replicas...$(RESET)" && \
+	kubectl scale deployment article-service -n marketplace --replicas=$$REPLICAS && \
+	echo "" && \
+	echo "$(YELLOW)Watch scaling (Ctrl+C pour quitter):$(RESET)" && \
+	kubectl get pods -n marketplace -l app=article-service -w
 
