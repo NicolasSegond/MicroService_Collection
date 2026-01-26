@@ -29,24 +29,20 @@
           </elementProp>
           <elementProp name="KEYCLOAK_CLIENT_ID" elementType="Argument">
             <stringProp name="Argument.name">KEYCLOAK_CLIENT_ID</stringProp>
-            <stringProp name="Argument.value">collector_front</stringProp>
+            <stringProp name="Argument.value">collector</stringProp>
           </elementProp>
-          <elementProp name="TEST_USER" elementType="Argument">
-            <stringProp name="Argument.name">TEST_USER</stringProp>
-            <stringProp name="Argument.value">testuser</stringProp>
-          </elementProp>
-          <elementProp name="TEST_PASSWORD" elementType="Argument">
-            <stringProp name="Argument.name">TEST_PASSWORD</stringProp>
-            <stringProp name="Argument.value">test123</stringProp>
+          <elementProp name="KEYCLOAK_CLIENT_SECRET" elementType="Argument">
+            <stringProp name="Argument.name">KEYCLOAK_CLIENT_SECRET</stringProp>
+            <stringProp name="Argument.value">IDH11sNeKIFpDUEcLavTzR0QzYuJpf1G</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
     <hashTree>
       <!-- ============================================ -->
-      <!-- SETUP: Obtenir le token Keycloak -->
+      <!-- SETUP: Obtenir le token via Client Credentials -->
       <!-- ============================================ -->
-      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="Setup - Get OAuth Token" enabled="true">
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="Setup - Get Service Account Token" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
           <boolProp name="LoopController.continue_forever">false</boolProp>
@@ -56,28 +52,23 @@
         <stringProp name="ThreadGroup.ramp_time">1</stringProp>
       </SetupThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Get Access Token" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Get Access Token (Client Credentials)" enabled="true">
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
             <collectionProp name="Arguments.arguments">
               <elementProp name="grant_type" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">true</boolProp>
                 <stringProp name="Argument.name">grant_type</stringProp>
-                <stringProp name="Argument.value">password</stringProp>
+                <stringProp name="Argument.value">client_credentials</stringProp>
               </elementProp>
               <elementProp name="client_id" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">true</boolProp>
                 <stringProp name="Argument.name">client_id</stringProp>
                 <stringProp name="Argument.value">${KEYCLOAK_CLIENT_ID}</stringProp>
               </elementProp>
-              <elementProp name="username" elementType="HTTPArgument">
+              <elementProp name="client_secret" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">true</boolProp>
-                <stringProp name="Argument.name">username</stringProp>
-                <stringProp name="Argument.value">${TEST_USER}</stringProp>
-              </elementProp>
-              <elementProp name="password" elementType="HTTPArgument">
-                <boolProp name="HTTPArgument.always_encode">true</boolProp>
-                <stringProp name="Argument.name">password</stringProp>
-                <stringProp name="Argument.value">${TEST_PASSWORD}</stringProp>
+                <stringProp name="Argument.name">client_secret</stringProp>
+                <stringProp name="Argument.value">${KEYCLOAK_CLIENT_SECRET}</stringProp>
               </elementProp>
             </collectionProp>
           </elementProp>
@@ -101,7 +92,7 @@
             <stringProp name="script">
               String token = vars.get("ACCESS_TOKEN");
               props.put("ACCESS_TOKEN", token);
-              log.info("Access token obtained successfully");
+              log.info("Service account token obtained successfully");
             </stringProp>
           </BeanShellPostProcessor>
           <hashTree/>
@@ -109,7 +100,7 @@
             <collectionProp name="Asserion.test_strings">
               <stringProp name="49586">200</stringProp>
             </collectionProp>
-            <stringProp name="Assertion.custom_message">Failed to get access token from Keycloak</stringProp>
+            <stringProp name="Assertion.custom_message">Failed to get service account token from Keycloak</stringProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
@@ -202,9 +193,9 @@
       </hashTree>
 
       <!-- ============================================ -->
-      <!-- TEST 2: Endpoints Protégés (avec auth) -->
+      <!-- TEST 2: Endpoints Protégés (avec auth via Service Account) -->
       <!-- ============================================ -->
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Protected Endpoints - Authenticated Users" enabled="true">
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Protected Endpoints - Service Account" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
           <boolProp name="LoopController.continue_forever">false</boolProp>
