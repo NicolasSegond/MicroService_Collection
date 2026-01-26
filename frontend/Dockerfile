@@ -31,10 +31,8 @@ CMD ["npm", "run", "dev"]
 #-----------------------------------------------
 FROM base AS build
 
-ENV NODE_ENV=production
-
 COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci
 
 COPY . .
 RUN npm run build
