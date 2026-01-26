@@ -201,7 +201,7 @@ jobs:
           docker run --rm \
             --network host \
             -v ${{ github.workspace }}/.github/perf:/jmeter \
-            justb4/jmeter:5.6.3 \
+            alpine/jmeter:5.6 \
             -n \
             -t /jmeter/test.jmx \
             -l /jmeter/results.jtl \
