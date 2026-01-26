@@ -1,6 +1,6 @@
 # Makefile - Marketplace Microservices
 
-.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images \
+.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-update k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images \
         demo-crash demo-scale
 
 CYAN := \033[36m
@@ -27,6 +27,7 @@ help: ## Affiche cette aide
 	@echo "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
 	@echo ""
 	@echo "     $(CYAN)make k8s-up$(RESET)        Crée cluster + déploie"
+	@echo "     $(CYAN)make k8s-update$(RESET)    Rebuild + redéploie (après modif code/assets)"
 	@echo "     $(CYAN)make k8s-restart$(RESET)   Redémarre le cluster"
 	@echo "     $(CYAN)make k8s-forward$(RESET)   Ouvre les ports"
 	@echo "     $(CYAN)make k8s-stop$(RESET)      Arrête"
@@ -112,6 +113,24 @@ k8s-restart:
 	@echo ""
 	@echo "$(BOLD)$(GREEN)═══ PRÊT ! ═══$(RESET)"
 	@echo "Lancez: $(CYAN)make k8s-forward$(RESET)"
+
+k8s-update:
+	@echo ""
+	@echo "$(BOLD)$(CYAN)═══ MISE À JOUR KUBERNETES ═══$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)[1/3]$(RESET) Rebuild des images..."
+	@$(MAKE) --no-print-directory build-images
+	@echo "$(GREEN)  ✓ Images OK$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)[2/3]$(RESET) Redéploiement..."
+	@kubectl rollout restart deployment -n marketplace
+	@echo "$(GREEN)  ✓ Déployé$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)[3/3]$(RESET) Attente des pods..."
+	@kubectl rollout status deployment/article-service -n marketplace --timeout=180s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Article Service$(RESET)" || echo "$(RED)  ✗ Article Service$(RESET)"
+	@kubectl rollout status deployment/frontend -n marketplace --timeout=180s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Frontend$(RESET)" || echo "$(RED)  ✗ Frontend$(RESET)"
+	@echo ""
+	@echo "$(BOLD)$(GREEN)═══ MIS À JOUR ! ═══$(RESET)"
 
 k8s-stop:
 	minikube stop
