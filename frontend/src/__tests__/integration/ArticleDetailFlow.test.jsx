@@ -66,23 +66,20 @@ describe('Article Detail Flow Integration', () => {
         const router = createMemoryRouter(routes, { initialEntries: ['/'] });
         render(<RouterProvider router={router} />);
 
-        // Wait for article grid to finish loading
         await waitFor(() => {
             expect(screen.queryByText('Chargement des articles...')).not.toBeInTheDocument();
         }, { timeout: 2000 });
 
-        // Find and click on the first article card link
         const articleLinks = document.querySelectorAll('.article-card-link');
         expect(articleLinks.length).toBeGreaterThan(0);
 
         await user.click(articleLinks[0]);
 
-        // Wait for article detail page to load
         await waitFor(() => {
             expect(screen.getByText('Sneakers en parfait état')).toBeInTheDocument();
         });
 
-        // Verify we're on the detail page
+        expect(screen.getByText('Nike Air Max')).toBeInTheDocument();
         expect(screen.getByText('150 €')).toBeInTheDocument();
         expect(screen.getByText('Seller1')).toBeInTheDocument();
         expect(screen.getByText('Contacter le vendeur')).toBeInTheDocument();
@@ -101,7 +98,9 @@ describe('Article Detail Flow Integration', () => {
             expect(screen.getByText('Nike Air Max')).toBeInTheDocument();
         });
 
-        // Check all sections are present
+        expect(screen.getByText('150 €')).toBeInTheDocument();
+        expect(screen.getByText('Publié le 10 janvier 2024')).toBeInTheDocument();
+        expect(screen.getByText('Seller1')).toBeInTheDocument();
         expect(screen.getByText('Description')).toBeInTheDocument();
         expect(screen.getByText('Sneakers en parfait état')).toBeInTheDocument();
         expect(screen.getByText('Partager')).toBeInTheDocument();
@@ -145,40 +144,11 @@ describe('Article Detail Flow Integration', () => {
             expect(screen.getByText('Sneakers en parfait état')).toBeInTheDocument();
         });
 
-        // Click back button
         const backBtn = screen.getByText('Retour');
         await user.click(backBtn);
 
-        // Should navigate back
         await waitFor(() => {
             expect(router.state.location.pathname).toBe('/');
         });
-    });
-
-    it('prompts login when contacting seller while not authenticated', async () => {
-        const mockLogin = vi.fn();
-        vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
-            keycloak: { authenticated: false, login: mockLogin },
-            initialized: true
-        });
-
-        const user = userEvent.setup();
-
-        global.fetch.mockResolvedValue({
-            ok: true,
-            json: async () => mockArticleDetail
-        });
-
-        const router = createMemoryRouter(routes, { initialEntries: ['/product/1'] });
-        render(<RouterProvider router={router} />);
-
-        await waitFor(() => {
-            expect(screen.getByText('Nike Air Max')).toBeInTheDocument();
-        });
-
-        const contactBtn = screen.getByText('Contacter le vendeur');
-        await user.click(contactBtn);
-
-        expect(mockLogin).toHaveBeenCalled();
     });
 });

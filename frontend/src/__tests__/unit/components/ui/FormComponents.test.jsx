@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { Mail } from 'lucide-react'; // Import corrigé (Mail vient de lucide, pas FormInput)
+import { Mail } from 'lucide-react';
 import FormInput from "../../../../components/ui/FormInput.jsx";
 import FormTextarea from "../../../../components/ui/FormTextarea.jsx";
 import ImageDropzone from "../../../../components/ui/ImageDropzone.jsx";
@@ -17,7 +17,6 @@ describe('Composants UI', () => {
         it('affiche une erreur si fournie', () => {
             render(<FormInput label="Email" error="Email invalide" />);
             expect(screen.getByText('Email invalide')).toBeInTheDocument();
-            // Utilisation de getByRole('textbox') pour cibler l'input réel
             expect(screen.getByRole('textbox')).toHaveClass('input-error');
         });
 
@@ -25,7 +24,6 @@ describe('Composants UI', () => {
             const handleChange = vi.fn();
             render(<FormInput onChange={handleChange} placeholder="Entrez un texte" />);
 
-            // On cible l'élément textbox (l'input)
             const input = screen.getByRole('textbox');
             fireEvent.change(input, { target: { value: 'test' } });
 
@@ -67,7 +65,6 @@ describe('Composants UI', () => {
             expect(img).toBeInTheDocument();
             expect(img).toHaveAttribute('src', 'data:image/png;base64,fake');
 
-            // Utilisation du TestId que nous avons ajouté au bouton de suppression
             const removeBtn = screen.getByTestId('remove-image-button');
             fireEvent.click(removeBtn);
             expect(handleRemove).toHaveBeenCalled();
@@ -76,11 +73,9 @@ describe('Composants UI', () => {
         it('déclenche l\'input file au clic', () => {
             render(<ImageDropzone />);
 
-            // On cherche par le label "Zone d'upload" défini dans le composant
             const dropzone = screen.getByRole('button', { name: /zone d'upload/i });
             const fileInput = dropzone.querySelector('input[type="file"]');
 
-            // On mock la méthode click de l'élément HTML input
             const clickSpy = vi.spyOn(fileInput, 'click');
 
             fireEvent.click(dropzone);

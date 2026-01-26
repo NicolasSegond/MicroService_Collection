@@ -3,13 +3,18 @@
 
 api:
   dashboard: true
-  insecure: true  # Dashboard accessible sans auth (dev only)
+  insecure: true
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
 
 ping:
   entryPoint: "web"
 
 log:
-  level: DEBUG  # Changer en INFO ou WARN en production
+  level: DEBUG
 
 accessLog:
   format: json
@@ -19,13 +24,10 @@ entryPoints:
     address: ":80"
 
 providers:
-  # Configuration dynamique via fichier
   file:
     filename: /etc/traefik/dynamic.yml
     watch: true
 
-  # Docker provider pour détecter les services
-  # Les routes sont définies dans les fichiers, pas via labels
   docker:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false

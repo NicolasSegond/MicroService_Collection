@@ -91,14 +91,10 @@ class ArticleFixtures extends Fixture implements DependentFixtureInterface
             $article = new Article();
             $article->setTitle($itemModel['title']);
             $article->setDescription($itemModel['desc']);
-
-            // Variation de prix (+/- 5%)
             $variation = $faker->randomFloat(2, 0.95, 1.05);
             $article->setPrice(round($itemModel['base_price'] * $variation, 2));
-
-            // URL Directe définie plus haut
+            $article->setShippingCost($faker->randomFloat(2, 5, 25));
             $article->setMainPhotoUrl($itemModel['image_url']);
-
             $article->setOwnerId($usersIds[array_rand($usersIds)]);
             $article->setStatus('PUBLISHED');
             $article->setCreatedAt(\DateTimeImmutable::createFromMutable($faker->dateTimeBetween('-3 months')));

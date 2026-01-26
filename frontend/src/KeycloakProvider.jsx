@@ -35,7 +35,6 @@ export const KeycloakProvider = ({ children }) => {
                 setAuthenticated(auth);
                 setInitialized(true);
 
-                /* v8 ignore start */
                 if (auth) {
                     interval = setInterval(() => {
                         kc.updateToken(70)
@@ -45,20 +44,15 @@ export const KeycloakProvider = ({ children }) => {
                             .catch(() => console.error('Failed to refresh token'));
                     }, 60000);
                 }
-                /* v8 ignore stop */
             })
             .catch((err) => {
-                /* v8 ignore next 2 */
                 console.error('Keycloak init error:', err);
                 setInitialized(true);
             });
 
-        /* v8 ignore start */
-        // Always return a cleanup function
         return () => {
             if (interval) clearInterval(interval);
         };
-        /* v8 ignore stop */
     }, []);
 
     const login = useCallback(() => {

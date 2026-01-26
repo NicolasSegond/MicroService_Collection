@@ -248,6 +248,30 @@ docker compose ps
 | **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik |
 | **Kafka UI** | http://localhost:8090 | Monitoring Kafka |
 
+## 📊 Monitoring & Observability
+
+The project includes a complete monitoring stack to track the health and metrics of the microservices.
+
+### Access Points
+
+| Service | Port | URL | Default Credentials | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Grafana** | `3001` | [http://localhost:3001](http://localhost:3001) | `admin` / `admin` | Visualization Dashboards |
+| **Prometheus** | `9090` | [http://localhost:9090](http://localhost:9090) | *(None)* | Metrics Collection |
+| **Kafka UI** | `8090` | [http://localhost:8090](http://localhost:8090) | *(None)* | Kafka Cluster Management |
+| **Traefik** | `8000` | [http://localhost:8000](http://localhost:8000) | *(None)* | API Gateway Dashboard |
+
+### Configuration Details
+
+* **Grafana**:
+    * Pre-configured with a default datasource (Prometheus).
+    * Dashboards are automatically provisioned from `./observability/grafana/dashboards`.
+    * *Note: The admin password is set via the `GF_SECURITY_ADMIN_PASSWORD` environment variable in `docker-compose.yml`.*
+
+* **Prometheus**:
+    * Scrapes metrics from services every 15s (configured in `./observability/prometheus.yml`).
+    * Data is persisted in the `prometheus_data` volume.
+
 ## Ports & Services
 
 | Service | Port | Description | Technologie |

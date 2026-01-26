@@ -158,6 +158,11 @@ const ArticleDetailPage = () => {
                         <div className="detail-header">
                             <h1 className="detail-title">{article.title}</h1>
                             <p className="detail-price">{formatPrice(article.price)}</p>
+                            {article.shippingCost > 0 && (
+                                <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '-10px' }}>
+                                    + {formatPrice(article.shippingCost)} de frais de port
+                                </p>
+                            )}
                         </div>
 
                         {article.description && (

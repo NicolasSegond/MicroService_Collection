@@ -8,15 +8,15 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use App\Filter\ForcePublishedFilter;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
 use App\State\ArticleWithOwnerProvider;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
-
-// Ajout de l'import
 
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
 #[ApiResource(
@@ -25,18 +25,32 @@ use Symfony\Component\Serializer\Annotation\Groups;
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
+            filters: [ForcePublishedFilter::class],
+            provider: ArticleWithOwnerProvider::class
+        ),
+        new GetCollection(
+            uriTemplate: '/admin/articles',
+            paginationEnabled: true,
+            paginationItemsPerPage: 20,
+            normalizationContext: ['groups' => ['article:read']],
             provider: ArticleWithOwnerProvider::class
         ),
         new Get(
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
+            filters: [ForcePublishedFilter::class],
             provider: ArticleWithOwnerProvider::class
         ),
         new Post(
             normalizationContext: ['groups' => ['article:read']],
             denormalizationContext: ['groups' => ['article:write']],
+            security: "is_granted('ROLE_USER')",
             processor: ArticleCreationProcessor::class
+        ),
+        new Patch(
+            normalizationContext: ['groups' => ['article:read']],
+            denormalizationContext: ['groups' => ['article:write']],
         )
     ]
 )]
@@ -57,6 +71,9 @@ class Article
     #[ORM\Column]
     #[Groups(['article:read', 'article:write'])]
     private ?float $price = null;
+    #[ORM\Column(nullable: true)]
+    #[Groups(['article:read', 'article:write'])]
+    private ?float $shippingCost = null;
     #[ORM\Column(length: 255)]
     #[Groups(['article:read', 'article:write'])]
     private ?string $mainPhotoUrl = null;
@@ -64,10 +81,10 @@ class Article
     #[Groups(['article:read'])]
     private ?string $ownerId = null;
     #[Groups(['article:read'])]
-    #[ApiProperty(jsonSchemaContext: ['type' => ['object', 'null']])] // Correction ici
+    #[ApiProperty(jsonSchemaContext: ['type' => ['object', 'null']])]
     private ?array $owner = null;
     #[ORM\Column(length: 50)]
-    #[Groups(['article:read'])]
+    #[Groups(['article:read', 'article:write'])]
     private ?string $status = null;
     #[ORM\Column]
     #[Groups(['article:read'])]
@@ -76,7 +93,7 @@ class Article
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        $this->status = 'PUBLISHED';
+        $this->status = 'DRAFT';
     }
 
     public function getId(): ?int
@@ -116,6 +133,18 @@ class Article
     public function setPrice(float $price): static
     {
         $this->price = $price;
+
+        return $this;
+    }
+
+    public function getShippingCost(): ?float
+    {
+        return $this->shippingCost;
+    }
+
+    public function setShippingCost(?float $shippingCost): static
+    {
+        $this->shippingCost = $shippingCost;
 
         return $this;
     }

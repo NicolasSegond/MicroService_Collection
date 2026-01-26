@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Configuration
+URL="http://localhost:8000"
+SERVICES=("article-service")
+# 2% de chance = environ 1 crash toutes les 30-60 secondes
+CHAOS_CHANCE=2
+
+echo -e "\033[33m🔥 Démarrage du Chaos Monkey (Mode Réaliste - 2%)...\033[0m"
+
+while true; do
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/articles" || echo "DOWN")
+
+    if [ "$HTTP_CODE" == "200" ]; then
+        echo -ne "\033[32m✅ OK \033[0m"
+    else
+        echo -ne "\033[31m❌ $HTTP_CODE \033[0m"
+    fi
+
+    ROLL=$((1 + RANDOM % 100))
+
+    if [ $ROLL -le $CHAOS_CHANCE ]; then
+        VICTIM=${SERVICES[0]}
+
+        echo -e "\n\033[35m💥 OUPS ! Incident sur : $VICTIM \033[0m"
+        docker stop $VICTIM > /dev/null
+
+        echo -e "\033[35m⏳ Maintenance en cours (10s)...\033[0m"
+
+        for i in {1..10}; do
+            curl -s -o /dev/null "$URL/api/articles"
+            sleep 1
+        done
+
+        echo -e "\n\033[36m🚑 RÉTABLISSEMENT : $VICTIM\033[0m"
+        docker start $VICTIM > /dev/null
+
+        echo -e "\033[90m🔄 Redémarrage...\033[0m"
+        sleep 5
+    fi
+
+    sleep 0.5
+
+    echo ""
+done

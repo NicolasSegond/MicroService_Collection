@@ -33,7 +33,6 @@ export default function ArticleCard({ article }) {
     const handleSaveClick = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // TODO: Implement save functionality
     };
 
     const imageUrl = getImageUrl(mainPhotoUrl);

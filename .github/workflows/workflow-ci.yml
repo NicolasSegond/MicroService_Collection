@@ -15,7 +15,7 @@ env:
 
 jobs:
   backend:
-    name: API PLATFORM • PHPUnit + Couverture
+    name: API PLATFORM • PHPUnit + Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -38,46 +38,46 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configuration PHP
+      - name: Configure PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ env.PHP_VERSION }}
           tools: composer
           coverage: pcov
 
-      - name: Cache Composer (accélère les installs)
+      - name: Cache Composer (speeds up installs)
         uses: actions/cache@v3
         with:
           path: article-service/vendor
           key: composer-${{ hashFiles('article-service/composer.lock') }}
 
-      - name: Installation dépendances PHP
+      - name: Install PHP dependencies
         working-directory: ./article-service
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Migrations BDD
+      - name: Run DB migrations
         working-directory: ./article-service
         env:
           DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
         run: php bin/console doctrine:migrations:migrate --no-interaction
 
-      - name: Audit sécurité des dépendances Composer
+      - name: Composer dependency security audit
         working-directory: ./article-service
         run: composer audit --no-interaction --format=table --locked
 
-      - name: Préparation BDD de Test (Create & Fixtures)
+      - name: Prepare test DB (create & fixtures)
         working-directory: ./article-service
         env:
           DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
         run: composer test:setup
 
-      - name: Tests PHPUnit + Couverture
+      - name: PHPUnit Tests + Coverage
         working-directory: ./article-service
         env:
           DATABASE_URL: ${{ env.DATABASE_URL_ARTICLE }}
         run: vendor/bin/phpunit --coverage-clover=${{ env.PHP_COVERAGE }}
 
-      - name: Artefact couverture backend
+      - name: Backend coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-coverage
@@ -107,17 +107,17 @@ jobs:
         working-directory: ./frontend
         run: npm run lint
 
-      - name: Tests unitaires + couverture (Vitest)
+      - name: Unit tests + coverage (Vitest)
         working-directory: ./frontend
         run: npm run test -- --run --coverage --coverage.reporter="lcov"
 
-      - name: Prépare le rapport de couverture back (LCOV)
+      - name: Prepare backend coverage report (LCOV)
         working-directory: ./frontend
         run: |
           test -f coverage/lcov.info || (echo "Pas de LCOV back, création d'un stub" && mkdir -p coverage && printf "TN:\nSF:dummy.js\nDA:1,0\nend_of_record\n" > coverage/lcov.info)
           mv coverage/lcov.info ../${{ env.FRONT_COVERAGE }}
 
-      - name: Artefact couverture frontend
+      - name: Frontend coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
@@ -125,7 +125,7 @@ jobs:
           retention-days: 7
 
   sonarcloud:
-    name: Qualité • SonarCloud (multi-langages)
+    name: Quality • SonarCloud (multi-language)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [ backend, frontend ]
@@ -135,12 +135,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download frontend coverage artefact
+      - name: Download frontend coverage artifact
         uses: actions/download-artifact@v4
         with:
           name: frontend-coverage
 
-      - name: Download backend coverage artefact
+      - name: Download backend coverage artifact
         uses: actions/download-artifact@v4
         with:
           name: backend-coverage
@@ -197,7 +197,6 @@ jobs:
           mkdir -p zap-wrk/.ZAP zap-wrk/reports
           
           # Copy ZAP config files to writable location
-          cp .zap/rules.tsv zap-wrk/rules.tsv
           cp .zap/zap.yaml zap-wrk/zap.yaml
           
           # Update zap.yaml URLs to use traefik hostname (internal Docker network)
@@ -221,8 +220,7 @@ jobs:
             -v ${{ github.workspace }}/zap-wrk:/home/zap:rw \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap.sh -cmd \
-              -autorun /zap/wrk/zap.yaml \
-            || echo "ZAP scan completed with findings"
+              -autorun /zap/wrk/zap.yaml
           
           echo "=== ZAP Reports ==="
           ls -la zap-wrk/
