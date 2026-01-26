@@ -1,5 +1,9 @@
 # Changelog—MicroService Collection
 
+## v1.0.5 - 26-01-2026
+
+- Grafana and Prometheus monitoring setup for microservices
+
 ## v1.0.4 - 12-01-2026
 
 - Implementation of the Home Page, Creation Page and Article Detail Page
