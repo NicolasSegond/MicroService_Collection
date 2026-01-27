@@ -1,4 +1,22 @@
-# Infrastructure: Databases, Kafka
+# Infrastructure: Databases, Kafka, Storage
+---
+# ============================================
+# ARTICLE UPLOADS PVC
+# ============================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: article-uploads-pvc
+  labels:
+    app: article-service
+    app.kubernetes.io/name: article-uploads
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 ---
 # ============================================
 # ARTICLE DATABASE

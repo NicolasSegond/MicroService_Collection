@@ -174,6 +174,17 @@ spec:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
+        - name: init-uploads
+          image: article-service
+          imagePullPolicy: Never
+          command: ["/bin/sh", "-c", "if [ -z \"$(ls -A /uploads 2>/dev/null)\" ]; then cp -r /app/public/uploads/* /uploads/ 2>/dev/null || true; fi"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 82
+          volumeMounts:
+            - name: uploads
+              mountPath: /uploads
       containers:
         - name: article-service
           image: article-service
@@ -225,6 +236,13 @@ spec:
               port: 8000
             initialDelaySeconds: 60
             periodSeconds: 30
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/public/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: article-uploads-pvc
 ---
 # ============================================
 # ARTICLE SERVICE CONSUMER (Kafka)

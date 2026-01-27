@@ -32,8 +32,8 @@ class JwtAuthenticator extends AbstractAuthenticator
         private string $keycloakUrl = '',
         private string $keycloakRealm = ''
     ) {
-        $this->keycloakUrl = $_ENV['KEYCLOAK_URL'] ?? 'http://keycloak:8080';
-        $this->keycloakRealm = $_ENV['KEYCLOAK_REALM'] ?? 'collector_realms';
+        $this->keycloakUrl = getenv('KEYCLOAK_URL') ?: ($_ENV['KEYCLOAK_URL'] ?? '');
+        $this->keycloakRealm = getenv('KEYCLOAK_REALM') ?: ($_ENV['KEYCLOAK_REALM'] ?? 'collector_realms');
     }
 
     public function supports(Request $request): ?bool
@@ -90,10 +90,18 @@ class JwtAuthenticator extends AbstractAuthenticator
     {
         try {
             $keys = $this->getJwks();
+            $this->logger->debug('JWT decode attempt', [
+                'token_preview' => substr($token, 0, 50) . '...',
+                'keys_count' => count($keys),
+            ]);
             $decoded = JWT::decode($token, $keys);
             return json_decode(json_encode($decoded), true);
         } catch (\Exception $e) {
-            $this->logger->error('JWT verification failed', ['error' => $e->getMessage()]);
+            $this->logger->error('JWT verification failed', [
+                'error' => $e->getMessage(),
+                'exception_class' => get_class($e),
+                'token_preview' => substr($token, 0, 50) . '...',
+            ]);
             throw new CustomUserMessageAuthenticationException('Invalid or expired token: ' . $e->getMessage());
         }
     }
