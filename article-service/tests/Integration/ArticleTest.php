@@ -4,6 +4,7 @@ namespace App\Tests\Integration;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Article;
+use App\Security\JwtUser;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
@@ -20,6 +21,16 @@ class ArticleTest extends ApiTestCase
     {
         self::bootKernel();
         $this->entityManager = self::getContainer()->get('doctrine')->getManager();
+    }
+
+    private function createTestUser(string $id = 'test-user-001'): JwtUser
+    {
+        return new JwtUser(
+            id: $id,
+            username: 'testuser',
+            email: 'test@example.com',
+            roles: ['ROLE_USER']
+        );
     }
 
     /**
@@ -106,25 +117,16 @@ class ArticleTest extends ApiTestCase
         $this->assertContains($draft->getTitle(), $titles, 'Les brouillons DOIVENT être visibles sur l\'endpoint admin.');
     }
 
-    /**
-     * @throws TransportExceptionInterface
-     * @throws ServerExceptionInterface
-     * @throws RedirectionExceptionInterface
-     * @throws DecodingExceptionInterface
-     * @throws ClientExceptionInterface
-     */
     public function testCreateArticleAsAuthenticatedUser(): void
     {
-        $client = static::createClient();
-
         $userId = 'test-user-001';
-        $token = $this->createMockJwt($userId);
+        $user = $this->createTestUser($userId);
+
+        $client = static::createClient();
+        $client->loginUser($user, 'api');
 
         $client->request('POST', '/api/articles', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Content-Type' => 'application/ld+json'
-            ],
+            'headers' => ['Content-Type' => 'application/ld+json'],
             'json' => [
                 'title' => 'Article Test Intégration',
                 'description' => 'Description créée lors du test manuel',
@@ -142,18 +144,5 @@ class ArticleTest extends ApiTestCase
             'ownerId' => $userId,
             'status' => 'DRAFT'
         ]);
-    }
-
-    private function createMockJwt(string $userId, string $email = 'test@example.com'): string
-    {
-        $header = base64_encode(json_encode(['alg' => 'HS256', 'typ' => 'JWT']));
-        $payload = base64_encode(json_encode([
-            'sub' => $userId,
-            'email' => $email,
-            'preferred_username' => 'Test User'
-        ]));
-        $signature = 'fake_signature';
-
-        return sprintf('%s.%s.%s', $header, $payload, $signature);
     }
 }
