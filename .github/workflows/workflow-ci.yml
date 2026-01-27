@@ -103,6 +103,10 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: NPM Security Audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run lint
@@ -164,7 +168,7 @@ jobs:
     name: Performance • JMeter Load Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [backend]
+    needs: [backend, frontend]
 
     steps:
       - name: Checkout repository
@@ -313,3 +317,87 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  gitleaks:
+    name: Security • GitLeaks (Secret Scanning)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: GitLeaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build • Docker Images (ghcr.io)
+    runs-on: ubuntu-latest
+    needs: [sonarcloud]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Article Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./article-service
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/article-service:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy Scan - Article Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-article-service.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Trivy Scan - Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: trivy-*.sarif
+          retention-days: 7
