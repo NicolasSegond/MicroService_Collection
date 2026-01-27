@@ -152,6 +152,13 @@
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract Article ID" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">ARTICLE_ID</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$['hydra:member'][0].id</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">1</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
         </hashTree>
 
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/articles/{id}" enabled="true">
@@ -161,7 +168,7 @@
           <stringProp name="HTTPSampler.domain">${API_HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${API_PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
-          <stringProp name="HTTPSampler.path">/api/articles/${__Random(1,10)}</stringProp>
+          <stringProp name="HTTPSampler.path">/api/articles/${ARTICLE_ID}</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
