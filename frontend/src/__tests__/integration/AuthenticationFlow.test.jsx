@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import Root from '../../pages/Root/Root.jsx';
 import HomePage from '../../pages/HomePage.jsx';
@@ -34,6 +34,10 @@ describe('Authentication Flow Integration', () => {
         global.fetch.mockResolvedValue({
             json: async () => ({ member: mockArticles })
         });
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
     });
 
     it('shows login button and hides sell button when not authenticated', async () => {
@@ -91,14 +95,17 @@ describe('Authentication Flow Integration', () => {
 
     it('opens user dropdown and calls logout', async () => {
         const user = userEvent.setup();
-        const mockLogout = vi.fn();
+        const mockClearToken = vi.fn();
 
         vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
             keycloak: {
                 authenticated: true,
                 token: 'fake-token',
                 tokenParsed: { preferred_username: 'TestUser' },
-                logout: mockLogout
+                authServerUrl: 'http://localhost:8080',
+                realm: 'test',
+                idToken: 'test-token',
+                clearToken: mockClearToken
             },
             initialized: true
         });
@@ -113,7 +120,10 @@ describe('Authentication Flow Integration', () => {
         expect(screen.getByText('Déconnexion')).toBeInTheDocument();
 
         await user.click(screen.getByText('Déconnexion'));
-        expect(mockLogout).toHaveBeenCalled();
+
+        await waitFor(() => {
+            expect(mockClearToken).toHaveBeenCalled();
+        }, { timeout: 1000 });
     });
 
     it('allows authenticated user to access sell page directly', async () => {
