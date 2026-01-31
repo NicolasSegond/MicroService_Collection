@@ -20,7 +20,23 @@ const Header = () => {
     };
 
     const handleLogout = () => {
-        keycloak.logout();
+        // Logout silencieux via iframe (évite la redirection vers Keycloak)
+        const logoutUrl = `${keycloak.authServerUrl}/realms/${keycloak.realm}/protocol/openid-connect/logout?id_token_hint=${keycloak.idToken}`;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = logoutUrl;
+        document.body.appendChild(iframe);
+
+        // Nettoyer le token local et rediriger après un court délai
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+            keycloak.clearToken();
+            navigate('/');
+            window.location.reload();
+        }, 500);
+
+        setUserMenuOpen(false);
     };
 
     const handleProfile = () => {

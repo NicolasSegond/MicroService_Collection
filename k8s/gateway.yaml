@@ -188,11 +188,9 @@ data:
         config:
           introspection_url: http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token/introspect
           scope_strategy: none
-          pre_authorization:
-            enabled: true
-            client_id: collector
-            client_secret: $KC_CLIENT_SECRET
-            token_url: http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token
+          introspection_request_headers:
+            Content-Type: application/x-www-form-urlencoded
+            Authorization: Basic Y29sbGVjdG9yOklESDExc05lS0lGcERVRWNMYXZUelIwUXpZdUpwZjFH
           token_from:
             header: Authorization
       anonymous:
@@ -423,7 +421,7 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
           env:
-            - name: KC_CLIENT_SECRET
+            - name: AUTHENTICATORS_OAUTH2_INTROSPECTION_CONFIG_PRE_AUTHORIZATION_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: app-secrets
