@@ -47,8 +47,7 @@ class KeycloakEventHandler
 
         $existingUser = $this->userInfoRepository->find($userId);
         if ($existingUser) {
-            $this->logger->info("User {$userId} already exists, updating instead");
-            $this->updateUserInfo($existingUser, $email, $firstName, $lastName, $avatarUrl);
+            $this->logger->warning("User {$userId} already exists, ignoring REGISTER event");
             return;
         }
 
@@ -70,8 +69,7 @@ class KeycloakEventHandler
 
         $userInfo = $this->userInfoRepository->find($userId);
         if (!$userInfo) {
-            $this->logger->warning("User {$userId} not found for UPDATE_PROFILE, creating new");
-            $this->handleRegister($event);
+            $this->logger->error("User {$userId} not found for UPDATE_PROFILE, event ignored");
             return;
         }
 
