@@ -19,74 +19,74 @@
 - [Structure du Projet](#structure-du-projet)
 - [Installation](#installation)
 - [Commandes Makefile](#commandes-makefile)
-- [Monitoring & Observability](#-monitoring--observability)
+- [Acces aux services](#acces-aux-services)
+- [Article Service - Details](#article-service---details)
+- [Monitoring & Observability](#monitoring--observability)
+- [CI/CD](#cicd)
 
 ---
 
 ## Architecture
 
 ```
-                                       ┌─────────────┐
-                                       │   Client    │
-                                       │   Browser   │
-                                       └──────┬──────┘
-                                              │
-                                       HTTPS (Port 3000)
-                                              │
-                                              ▼
-                                  ┌───────────────────────┐
-                                  │  Frontend React :3000 │
-                                  │   (Keycloak.js)       │
-                                  └──────────┬────────────┘
-                                             │
-                   ┌─────────────────────────┴─────────────────────────┐
-                   │                                                   │
-          OAuth2 Login/Token                                       API Calls
-           (Port 8080)                                            (Port 8000)
-                   │                                                   │
-                   ▼                                                   ▼
-          ┌──────────────┐                                      ┌──────────────┐
-          │  Keycloak    │                                      │   Traefik    │
-          │    :8080     │◄────────────────────────────────────▶│  API Gateway │
-          │              │          Token Introspection         │    :8000     │
-          │ OAuth2/OIDC  │          (via Oathkeeper)            ├──────────────┤
-          │ Token Issuer │                                      │  Oathkeeper  │
-          └──────────────┘                                      │  (Decision)  │
-                                                                └──────┬───────┘
-                                                                       │
-                                    ┌──────────────────────────────────┴──────────────────────────────────┐
-                                    │                                                                     │
-                               HTTP Routing                                                         HTTP Routing
-                             (JWT in Header)                                                      (JWT in Header)
-                                    │                                                                     │
-                                    ▼                                                                     ▼
-                           ┌─────────────────┐                                                  ┌─────────────────┐
-                           │  User Service   │                                                  │ Article Service │
-                           │     :8081       │                                                  │      :8082      │
-                           │  Symfony 7.3    │◄────────────────────────────────────────────────▶│  Symfony 7.3    │
-                           │  API Platform   │               Kafka Events Stream                │  API Platform   │
-                           └────────┬────────┘                                                  └────────┬────────┘
-                                    │                                                                    │
-                             SQL (Port 5432)                                                        SQL (Port 5433)
-                                    │                                                                    │
-                                    ▼                                                                    ▼
-                           ┌─────────────────┐                                                  ┌─────────────────┐
-                           │  PostgreSQL     │                                                  │  PostgreSQL     │
-                           │   user_db       │                                                  │  article_db     │
-                           │    :5432        │                                                  │    :5433        │
-                           └────────┬────────┘                                                  └────────┬────────┘
-                                    │                                                                    │
-                                    └────────────────────────────────┬───────────────────────────────────┘
-                                                                     │
-                                                              Kafka Protocol
-                                                                (Port 9092)
-                                                                     │
-                                                                     ▼
-                                                          ┌─────────────────────┐
-                                                          │   Apache Kafka      │
-                                                          │      :9092          │
-                                                          │  Event Streaming    │
-                                                          └─────────────────────┘
+                                 ┌─────────────┐
+                                 │   Client    │
+                                 └──────┬──────┘
+                                        │
+                                   Port 3000
+                                        │
+                                        ▼
+                            ┌───────────────────────┐
+                            │  Frontend React :3000 │
+                            │     (Keycloak.js)     │
+                            └───────────┬───────────┘
+                                        │
+              ┌─────────────────────────┴─────────────────────────┐
+              │                                                   │
+         OAuth2 Login                                        API Calls
+          Port 8080                                          Port 8000
+              │                                                   │
+              ▼                                                   ▼
+     ┌─────────────────┐                                 ┌─────────────────┐
+     │    Keycloak     │                                 │     Traefik     │
+     │     :8080       │◄───────────────────────────────▶│   API Gateway   │
+     │                 │       Token Introspection       │     :8000       │
+     │  OAuth2/OIDC    │         (via Oathkeeper)        ├─────────────────┤
+     │  Token Issuer   │                                 │   Oathkeeper    │
+     └────────┬────────┘                                 └────────┬────────┘
+              │                                                   │
+              │                                              JWT Header
+              │                                                   │
+              │          ┌────────────────────────────────────────┼────────┐
+              │          │         Article Service :8082          ▼        │
+              │          │  ┌─────────────────────┐  ┌─────────────────┐   │
+              │          │  │     API REST        │  │  Kafka Consumer │   │
+              │          │  │   (API Platform)    │  │ (Keycloak Sync) │   │
+              │          │  │                     │  │                 │   │
+              │          │  │  - GET /articles    │  │  - REGISTER     │   │
+              │          │  │  - POST /articles   │  │  - UPDATE       │   │
+              │          │  │  - PATCH /articles  │  │  - DELETE       │   │
+              │          │  │  - POST /upload     │  │                 │   │
+              │          │  └──────────┬──────────┘  └────────┬────────┘   │
+              │          │             │                      │            │
+              │          │             └──────────┬───────────┘            │
+              │          │                        ▼                        │
+              │          │               ┌─────────────────┐               │
+              │          │               │   PostgreSQL    │               │
+              │          │               │   article-db    │               │
+              │          │               │                 │               │
+              │          │               │  - Article      │               │
+              │          │               │  - UserInfo     │               │
+              │          │               └─────────────────┘               │
+              │          └─────────────────────────▲───────────────────────┘
+              │                                    │
+              │   Keycloak Events                  │
+              │   (REGISTER, UPDATE, DELETE)       │
+              │                                    │
+              │          ┌─────────────────────────┴───┐
+              └─────────▶│        Apache Kafka         │
+                         │           :9092             │
+                         └─────────────────────────────┘
 ```
 
 ### Flux d'authentification
@@ -103,30 +103,30 @@
 
 ### Principes cles
 
-| Principe | Description |
-|----------|-------------|
-| **API Gateway** | Traefik centralise le routage, Oathkeeper gere l'authentification |
-| **Database per Service** | Chaque service a sa propre base de donnees isolee |
-| **Event-Driven** | Communication asynchrone via Kafka entre services |
-| **OAuth2/OIDC** | Authentification centralisee avec Keycloak |
-| **Token Introspection** | Validation des tokens en temps reel via Keycloak |
-| **No Direct Access** | Les services ne s'appellent pas directement |
+| Principe                 | Description                                                       |
+|--------------------------|-------------------------------------------------------------------|
+| **API Gateway**          | Traefik centralise le routage, Oathkeeper gere l'authentification |
+| **Database per Service** | Chaque service a sa propre base de donnees isolee                 |
+| **Event-Driven**         | Communication asynchrone via Kafka entre services                 |
+| **OAuth2/OIDC**          | Authentification centralisee avec Keycloak                        |
+| **Token Introspection**  | Validation des tokens en temps reel via Keycloak                  |
+| **No Direct Access**     | Les services ne s'appellent pas directement                       |
 
 ---
 
 ## Stack Technique
 
-| Couche | Technologies |
-|--------|-------------|
-| **Frontend** | React 19, Keycloak.js, React Router, Vite 7 |
-| **API Gateway** | Traefik 3.2, Ory Oathkeeper |
-| **Backend** | Symfony 7.3, API Platform 4.2, PHP 8.2+ |
-| **Authentification** | Keycloak 23 (OAuth2/OIDC), Token Introspection |
-| **Base de donnees** | PostgreSQL 15 |
-| **Messagerie** | Apache Kafka 7.5 |
-| **Infrastructure** | Kubernetes (Minikube) |
-| **Monitoring** | Prometheus, Grafana |
-| **CI/CD** | GitHub Actions, SonarCloud, ZAP Security |
+| Couche               | Technologies                                       |
+|----------------------|----------------------------------------------------|
+| **Frontend**         | React 19, Keycloak.js, React Router, Vite 7        |
+| **API Gateway**      | Traefik 3.2, Ory Oathkeeper                        |
+| **Backend**          | Symfony 7.3, API Platform 4.2, PHP 8.3, PHPUnit 12 |
+| **Authentification** | Keycloak 23 (OAuth2/OIDC), Token Introspection     |
+| **Base de donnees**  | PostgreSQL 15                                      |
+| **Messagerie**       | Apache Kafka 7.5                                   |
+| **Infrastructure**   | Kubernetes (Minikube)                              |
+| **Monitoring**       | Prometheus, Grafana                                |
+| **CI/CD**            | GitHub Actions, SonarCloud, ZAP Security           |
 
 ---
 
@@ -142,11 +142,17 @@ MicroService_Collection/
 │
 ├── article-service/             # Microservice articles (Symfony)
 │   ├── src/
-│   │   ├── Entity/
+│   │   ├── Entity/              # Article, UserInfo
 │   │   ├── Repository/
-│   │   ├── Controller/
-│   │   ├── ApiResource/
+│   │   ├── Controller/          # UploadController
+│   │   ├── Command/             # Kafka consumer, Keycloak sync
+│   │   ├── Doctrine/            # PublishedArticleExtension
+│   │   ├── MessageHandler/      # KeycloakEventHandler
+│   │   ├── State/               # Processors & Providers
 │   │   └── Security/            # JwtAuthenticator
+│   ├── tests/
+│   │   ├── Unit/                # Tests unitaires
+│   │   └── Integration/         # Tests API Platform
 │   ├── config/
 │   ├── migrations/
 │   └── Dockerfile
@@ -218,6 +224,7 @@ make k8s-start
 ```
 
 Cette commande :
+
 - Demarre Minikube avec les ressources adequates
 - Configure le registry Docker local
 - Deploie tous les services via Kustomize
@@ -240,21 +247,21 @@ make k8s-status
 
 ### Kubernetes
 
-| Commande | Description |
-|----------|-------------|
-| `make k8s-start` | Demarrer Minikube et deployer les services |
-| `make k8s-stop` | Arreter Minikube |
-| `make k8s-delete` | Supprimer le cluster Minikube |
-| `make k8s-forward` | Configurer le port forwarding |
-| `make k8s-status` | Afficher l'etat des pods |
-| `make k8s-logs p=<service>` | Voir les logs d'un service |
+| Commande                    | Description                                |
+|-----------------------------|--------------------------------------------|
+| `make k8s-start`            | Demarrer Minikube et deployer les services |
+| `make k8s-stop`             | Arreter Minikube                           |
+| `make k8s-delete`           | Supprimer le cluster Minikube              |
+| `make k8s-forward`          | Configurer le port forwarding              |
+| `make k8s-status`           | Afficher l'etat des pods                   |
+| `make k8s-logs p=<service>` | Voir les logs d'un service                 |
 
 ### Developpement
 
-| Commande | Description |
-|----------|-------------|
+| Commande    | Description           |
+|-------------|-----------------------|
 | `make test` | Lancer tous les tests |
-| `make lint` | Lancer les linters |
+| `make lint` | Lancer les linters    |
 
 ### Frontend (depuis `frontend/`)
 
@@ -270,14 +277,92 @@ npm run lint             # ESLint
 
 ## Acces aux services
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Frontend** | http://localhost:3000 | Interface utilisateur |
-| **API Gateway** | http://localhost:8000 | Point d'entree API |
-| **Keycloak** | http://localhost:8080 | Console admin |
-| **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik |
-| **Grafana** | http://localhost:3001 | Dashboards |
-| **Prometheus** | http://localhost:9090 | Metriques |
+| Service               | URL                   | Description           |
+|-----------------------|-----------------------|-----------------------|
+| **Frontend**          | http://localhost:3000 | Interface utilisateur |
+| **API Gateway**       | http://localhost:8000 | Point d'entree API    |
+| **Keycloak**          | http://localhost:8080 | Console admin         |
+| **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik    |
+| **Grafana**           | http://localhost:3001 | Dashboards            |
+| **Prometheus**        | http://localhost:9090 | Metriques             |
+
+---
+
+## Article Service - Details
+
+### Endpoints API
+
+#### Public
+
+| Methode | Endpoint             | Description                                  |
+|---------|----------------------|----------------------------------------------|
+| GET     | `/api/articles`      | Liste des articles publies (pagine, 10/page) |
+| GET     | `/api/articles/{id}` | Detail d'un article avec infos proprietaire  |
+
+#### Authentifie
+
+| Methode | Endpoint             | Role      | Description                     |
+|---------|----------------------|-----------|---------------------------------|
+| POST    | `/api/articles`      | ROLE_USER | Creer un article (statut DRAFT) |
+| PATCH   | `/api/articles/{id}` | Owner     | Modifier un article             |
+
+#### Administration
+
+| Methode | Endpoint              | Description                               |
+|---------|-----------------------|-------------------------------------------|
+| GET     | `/api/admin/articles` | Articles en DRAFT uniquement (moderation) |
+
+#### Upload
+
+| Methode | Endpoint            | Description                                    |
+|---------|---------------------|------------------------------------------------|
+| POST    | `/api/media/upload` | Upload d'image (JPG, PNG, GIF, WEBP - max 5MB) |
+
+### Filtrage des Articles (PublishedArticleExtension)
+
+Le service utilise une extension Doctrine pour filtrer automatiquement les articles :
+
+| Contexte                         | Non-authentifie | Authentifie           | Admin |
+|----------------------------------|-----------------|-----------------------|-------|
+| Collection `/api/articles`       | PUBLISHED       | PUBLISHED             | Tous  |
+| Collection `/api/admin/articles` | DRAFT           | DRAFT                 | DRAFT |
+| Item `/api/articles/{id}`        | PUBLISHED       | PUBLISHED + ses DRAFT | Tous  |
+
+### Synchronisation Keycloak
+
+Le service maintient un cache local des utilisateurs (`UserInfo`) via Kafka :
+
+```bash
+# Consumer temps reel (evenements Keycloak)
+php bin/console app:consume-keycloak-events
+
+# Synchronisation initiale depuis l'API admin
+php bin/console app:sync-keycloak-users
+```
+
+**Evenements traites :**
+
+- `REGISTER` : Creation utilisateur (ignore si existant)
+- `UPDATE_PROFILE` : Mise a jour profil (ignore si inexistant)
+- `DELETE_ACCOUNT` : Suppression utilisateur
+
+### Tests
+
+```bash
+# Setup base de test
+cd article-service && composer test:setup
+
+# Tous les tests
+./vendor/bin/phpunit
+
+# Avec couverture
+./vendor/bin/phpunit --coverage-html coverage/
+```
+
+**Couverture :**
+
+- Tests unitaires : Command, Controller, Entity, MessageHandler, Security, State
+- Tests d'integration : API Articles (CRUD, filtrage, authentification)
 
 ---
 
@@ -287,10 +372,10 @@ Le monitoring est deploye via Kubernetes. Les manifests se trouvent dans `k8s/mo
 
 ### Services
 
-| Service | Description |
-|---------|-------------|
-| **Grafana** | Visualisation des metriques et dashboards |
-| **Prometheus** | Collecte et stockage des metriques |
+| Service        | Description                               |
+|----------------|-------------------------------------------|
+| **Grafana**    | Visualisation des metriques et dashboards |
+| **Prometheus** | Collecte et stockage des metriques        |
 
 ### Configuration
 
@@ -317,15 +402,16 @@ openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"VOTRE_CLE
 
 ## CI/CD
 
-La pipeline CI/CD utilise Docker Compose pour les tests d'integration. Les workflows se trouvent dans `.github/workflows/`.
+La pipeline CI/CD utilise Docker Compose pour les tests d'integration. Les workflows se trouvent dans
+`.github/workflows/`.
 
-| Job | Description |
-|-----|-------------|
-| **backend** | Tests PHPUnit + couverture |
-| **frontend** | Tests Vitest + ESLint |
-| **sonarcloud** | Analyse de qualite |
-| **perf_tests** | Tests de charge JMeter |
-| **zap-local** | Scan de securite OWASP ZAP |
+| Job            | Description                |
+|----------------|----------------------------|
+| **backend**    | Tests PHPUnit + couverture |
+| **frontend**   | Tests Vitest + ESLint      |
+| **sonarcloud** | Analyse de qualite         |
+| **perf_tests** | Tests de charge JMeter     |
+| **zap-local**  | Scan de securite OWASP ZAP |
 
 ---
 
