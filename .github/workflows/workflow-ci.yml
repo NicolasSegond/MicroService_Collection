@@ -336,6 +336,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
 
     steps:
       - name: Checkout repository
@@ -392,9 +393,44 @@ jobs:
           output: 'trivy-frontend.sarif'
           severity: 'CRITICAL,HIGH'
 
+      - name: Trivy HTML Report - Article Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ env.REPO_LC }}/article-service:${{ github.sha }}
+          format: 'template'
+          template: '@/contrib/html.tpl'
+          output: 'trivy-article-service.html'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Trivy HTML Report - Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ env.REPO_LC }}/frontend:${{ github.sha }}
+          format: 'template'
+          template: '@/contrib/html.tpl'
+          output: 'trivy-frontend.html'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy SARIF - Article Service
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-article-service.sarif
+          category: trivy-article-service
+
+      - name: Upload Trivy SARIF - Frontend
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
       - name: Upload Trivy Reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: trivy-reports
-          path: trivy-*.sarif
+          path: |
+            trivy-*.sarif
+            trivy-*.html
           retention-days: 7
