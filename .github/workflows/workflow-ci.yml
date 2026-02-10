@@ -393,22 +393,20 @@ jobs:
           output: 'trivy-frontend.sarif'
           severity: 'CRITICAL,HIGH'
 
-      - name: Trivy HTML Report - Article Service
+      - name: Trivy Report - Article Service
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ghcr.io/${{ env.REPO_LC }}/article-service:${{ github.sha }}
-          format: 'template'
-          template: '@/contrib/html.tpl'
-          output: 'trivy-article-service.html'
+          format: 'table'
+          output: 'trivy-article-service.txt'
           severity: 'CRITICAL,HIGH'
 
-      - name: Trivy HTML Report - Frontend
+      - name: Trivy Report - Frontend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ghcr.io/${{ env.REPO_LC }}/frontend:${{ github.sha }}
-          format: 'template'
-          template: '@/contrib/html.tpl'
-          output: 'trivy-frontend.html'
+          format: 'table'
+          output: 'trivy-frontend.txt'
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy SARIF - Article Service
@@ -432,5 +430,5 @@ jobs:
           name: trivy-reports
           path: |
             trivy-*.sarif
-            trivy-*.html
+            trivy-*.txt
           retention-days: 7
