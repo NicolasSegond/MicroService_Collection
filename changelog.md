@@ -1,5 +1,9 @@
 # Changelog—MicroService Collection
 
+## v1.0.6 - 10-02-2026
+
+- Minikube implementation for local Kubernetes cluster setup
+
 ## v1.0.5 - 26-01-2026
 
 - Grafana and Prometheus monitoring setup for microservices
