@@ -1,0 +1,500 @@
+# Gateway: Traefik + Oathkeeper + Ingress
+---
+# ============================================
+# TRAEFIK CONFIG
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-config
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
+data:
+  traefik.yaml: |
+    api:
+      dashboard: true
+      insecure: true
+    ping:
+      entryPoint: traefik
+    metrics:
+      prometheus:
+        addEntryPointsLabels: true
+        addRoutersLabels: true
+    log:
+      level: INFO
+      format: json
+    accessLog:
+      format: json
+    entryPoints:
+      web:
+        address: ":80"
+      traefik:
+        address: ":8080"
+    providers:
+      file:
+        filename: /etc/traefik/dynamic.yaml
+        watch: true
+
+  dynamic.yaml: |
+    http:
+      middlewares:
+        # AUTHENTIFICATION OIDC via Oathkeeper (introspection)
+        oidc-auth:
+          forwardAuth:
+            address: "http://oathkeeper:4456/decisions"
+            authResponseHeaders:
+              - "X-User-Id"
+              - "X-User-Email"
+              - "X-User-Username"
+              - "X-User-Given-Name"
+              - "X-User-Family-Name"
+              - "X-User-Realm-Access"
+              - "Authorization"
+            trustForwardHeader: true
+        # CORS
+        cors-headers:
+          headers:
+            accessControlAllowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+            accessControlAllowHeaders: ["Accept", "Content-Type", "Authorization"]
+            accessControlExposeHeaders: ["X-Request-ID"]
+            accessControlAllowCredentials: true
+            accessControlMaxAge: 3600
+            accessControlAllowOriginList:
+              - "http://localhost:3000"
+              - "http://marketplace.local"
+        # SECURITY HEADERS
+        security-headers:
+          headers:
+            customResponseHeaders:
+              X-Content-Type-Options: "nosniff"
+              X-Frame-Options: "DENY"
+              X-XSS-Protection: "1; mode=block"
+              Content-Security-Policy: "default-src 'self'; frame-ancestors 'none'"
+              Permissions-Policy: "geolocation=(), microphone=(), camera=()"
+              Cache-Control: "no-store, no-cache, must-revalidate"
+              Pragma: "no-cache"
+              Referrer-Policy: "strict-origin-when-cross-origin"
+            customRequestHeaders:
+              Server: ""
+        # RATE LIMITING
+        rate-limit:
+          rateLimit:
+            average: 100
+            burst: 50
+            period: 1m
+        # REQUEST SIZE LIMIT
+        request-size:
+          buffering:
+            maxRequestBodyBytes: 10485760
+        # CHAIN: Routes protégées (avec auth)
+        api-chain:
+          chain:
+            middlewares: [cors-headers, security-headers, rate-limit, request-size, oidc-auth]
+        # CHAIN: Routes publiques (sans auth)
+        public-chain:
+          chain:
+            middlewares: [cors-headers, security-headers, rate-limit]
+      routers:
+        # ROOT - Return 200 OK
+        root:
+          rule: "Path(`/`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: ping@internal
+        # HEALTH ENDPOINT
+        health:
+          rule: "Path(`/health`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: ping@internal
+        # ARTICLE SERVICE - Admin
+        article-admin-api:
+          rule: "PathPrefix(`/api/admin/articles`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: article-service
+        # ARTICLE SERVICE - Route publique (GET)
+        article-api-public:
+          rule: "PathPrefix(`/api/articles`) && Method(`GET`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: article-service
+        # ARTICLE SERVICE - Route protégée (POST, PUT, PATCH, DELETE)
+        article-api-protected:
+          rule: "PathPrefix(`/api/articles`) && !Method(`GET`)"
+          entryPoints: [web]
+          middlewares: [api-chain]
+          service: article-service
+        # MEDIA/UPLOAD SERVICE - Route protégée
+        media-api:
+          rule: "PathPrefix(`/api/media`)"
+          entryPoints: [web]
+          middlewares: [api-chain]
+          service: article-service
+        # UPLOADS - Route publique (fichiers statiques)
+        uploads:
+          rule: "PathPrefix(`/uploads`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: article-service
+        # TEST SERVICE - Route publique
+        test-api:
+          rule: "PathPrefix(`/api/test`)"
+          entryPoints: [web]
+          middlewares: [public-chain]
+          service: article-service
+      services:
+        article-service:
+          loadBalancer:
+            servers:
+              - url: "http://article-service:8000"
+---
+# ============================================
+# OATHKEEPER CONFIG
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oathkeeper-config
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
+data:
+  config.yaml: |
+    serve:
+      proxy:
+        port: 4455
+      api:
+        port: 4456
+    log:
+      level: info
+      format: json
+    errors:
+      fallback: [json]
+      handlers:
+        json:
+          enabled: true
+          config:
+            verbose: false
+    access_rules:
+      repositories:
+        - file:///etc/oathkeeper/rules.yaml
+    authenticators:
+      oauth2_introspection:
+        enabled: true
+        config:
+          introspection_url: http://keycloak:8080/realms/collector_realms/protocol/openid-connect/token/introspect
+          scope_strategy: none
+          introspection_request_headers:
+            Content-Type: application/x-www-form-urlencoded
+            Authorization: Basic Y29sbGVjdG9yOklESDExc05lS0lGcERVRWNMYXZUelIwUXpZdUpwZjFH
+          token_from:
+            header: Authorization
+      anonymous:
+        enabled: true
+        config:
+          subject: anonymous
+      noop:
+        enabled: true
+    authorizers:
+      allow:
+        enabled: true
+    mutators:
+      header:
+        enabled: true
+        config:
+          headers:
+            Authorization: "{{ .MatchContext.Header.Get \"Authorization\" }}"
+      noop:
+        enabled: true
+
+  rules.yaml: |
+    - id: article-service-protected
+      match:
+        url: <http|https>://<.*>/api/articles<.*>
+        methods: [POST, PUT, PATCH, DELETE, OPTIONS]
+      authenticators:
+        - handler: oauth2_introspection
+      authorizer:
+        handler: allow
+      mutators:
+        - handler: header
+    - id: media-service-protected
+      match:
+        url: <http|https>://<.*>/api/media<.*>
+        methods: [POST, OPTIONS]
+      authenticators:
+        - handler: oauth2_introspection
+      authorizer:
+        handler: allow
+      mutators:
+        - handler: header
+---
+# ============================================
+# TRAEFIK SERVICE ACCOUNT
+# ============================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
+---
+# ============================================
+# TRAEFIK SERVICE
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
+spec:
+  ports:
+    - name: web
+      port: 80
+    - name: dashboard
+      port: 8080
+  selector:
+    app: traefik
+---
+# ============================================
+# TRAEFIK DEPLOYMENT
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  labels:
+    app: traefik
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+        app.kubernetes.io/name: traefik
+        app.kubernetes.io/component: gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: traefik
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+      initContainers:
+        - name: wait-for-keycloak
+          image: curlimages/curl:8.5.0
+          command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
+        - name: wait-for-oathkeeper
+          image: curlimages/curl:8.5.0
+          command: ["/bin/sh", "-c", "until curl -sf http://oathkeeper:4456/health/alive; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
+      containers:
+        - name: traefik
+          image: traefik:v3.2
+          ports:
+            - containerPort: 80
+              name: web
+            - containerPort: 8080
+              name: dashboard
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          args: ["--configFile=/etc/traefik/traefik.yaml"]
+          volumeMounts:
+            - name: traefik-config
+              mountPath: /etc/traefik
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: traefik-config
+          configMap:
+            name: traefik-config
+---
+# ============================================
+# OATHKEEPER SERVICE
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: oathkeeper
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
+spec:
+  ports:
+    - name: proxy
+      port: 4455
+    - name: api
+      port: 4456
+  selector:
+    app: oathkeeper
+---
+# ============================================
+# OATHKEEPER DEPLOYMENT
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oathkeeper
+  labels:
+    app: oathkeeper
+    app.kubernetes.io/name: oathkeeper
+    app.kubernetes.io/component: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oathkeeper
+  template:
+    metadata:
+      labels:
+        app: oathkeeper
+        app.kubernetes.io/name: oathkeeper
+        app.kubernetes.io/component: auth
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+      initContainers:
+        - name: wait-for-keycloak
+          image: curlimages/curl:8.5.0
+          command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
+      containers:
+        - name: oathkeeper
+          image: oryd/oathkeeper:v0.40
+          args: ["serve", "--config", "/etc/oathkeeper/config.yaml"]
+          ports:
+            - containerPort: 4455
+              name: proxy
+            - containerPort: 4456
+              name: api
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          env:
+            - name: AUTHENTICATORS_OAUTH2_INTROSPECTION_CONFIG_PRE_AUTHORIZATION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: KC_CLIENT_SECRET
+          volumeMounts:
+            - name: oathkeeper-config
+              mountPath: /etc/oathkeeper
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          readinessProbe:
+            httpGet:
+              path: /health/alive
+              port: 4456
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/alive
+              port: 4456
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: oathkeeper-config
+          configMap:
+            name: oathkeeper-config
+---
+# ============================================
+# INGRESS
+# ============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: marketplace-ingress
+  labels:
+    app.kubernetes.io/name: marketplace-ingress
+    app.kubernetes.io/component: networking
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: marketplace.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+    - host: api.marketplace.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: traefik
+                port:
+                  number: 80
+    - host: auth.marketplace.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080

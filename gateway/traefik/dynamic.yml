@@ -104,6 +104,15 @@ http:
         - public-chain
       service: ping@internal
 
+    # ARTICLE SERVICE - Admin
+    article-admin-api:
+      rule: "PathPrefix(`/api/admin/articles`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: article-service
+
     # ARTICLE SERVICE - Route publique (pas d'auth)
     article-api-public:
       rule: "PathPrefix(`/api/articles`) && Method(`GET`)"

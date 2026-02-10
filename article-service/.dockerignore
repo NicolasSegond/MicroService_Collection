@@ -1,0 +1,28 @@
+# Dependencies - installed during build
+vendor/
+
+# Symfony cache and logs
+var/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Testing
+.phpunit.result.cache
+phpunit.xml
+
+# Docker and CI
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Environment files
+.env.local
+.env.*.local

@@ -6,8 +6,6 @@ volumes:
   article-db-data:
   keycloak-db-data:
   kafka-data:
-  prometheus_data:
-  grafana_data:
 
 services:
   kafka:
@@ -208,39 +206,3 @@ services:
       target: prod
     ports:
       - "3000:3000"
-
-  # SERVICE PROMETHEUS
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus # Persistance des données
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=15d'
-    ports:
-      - "9090:9090"
-    depends_on:
-      - traefik
-    networks:
-      - app-network
-
-  # SERVICE GRAFANA
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./observability/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./observability/grafana/dashboards/provider.yml:/etc/grafana/provisioning/dashboards/provider.yml
-      - ./observability/grafana/dashboards/json:/etc/grafana/provisioning/dashboards/json
-    depends_on:
-      - prometheus
-    networks:
-      - app-network

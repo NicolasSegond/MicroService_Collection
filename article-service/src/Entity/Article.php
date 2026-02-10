@@ -10,7 +10,6 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
-use App\Filter\ForcePublishedFilter;
 use App\Repository\ArticleRepository;
 use App\State\ArticleCreationProcessor;
 use App\State\ArticleWithOwnerProvider;
@@ -25,7 +24,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
-            filters: [ForcePublishedFilter::class],
             provider: ArticleWithOwnerProvider::class
         ),
         new GetCollection(
@@ -36,10 +34,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
             provider: ArticleWithOwnerProvider::class
         ),
         new Get(
-            paginationEnabled: true,
-            paginationItemsPerPage: 10,
             normalizationContext: ['groups' => ['article:read']],
-            filters: [ForcePublishedFilter::class],
             provider: ArticleWithOwnerProvider::class
         ),
         new Post(

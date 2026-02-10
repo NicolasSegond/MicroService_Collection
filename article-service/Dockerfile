@@ -34,9 +34,9 @@ RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf
 WORKDIR /app
 
 COPY nginx.conf /etc/nginx/http.d/default.conf
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 
-RUN dos2unix /usr/local/bin/docker-entrypoint
+RUN dos2unix /usr/local/bin/docker-entrypoint && chmod +x /usr/local/bin/docker-entrypoint
 
 RUN mkdir -p var/cache var/log /var/log/nginx /run/nginx \
     /var/lib/nginx/tmp/client_body \
@@ -66,7 +66,30 @@ RUN mkdir -p /app/var && chown -R 1000:1000 /app /app/var /var/log/nginx /run/ng
 USER 1000:1000
 
 #-----------------------------------------------
-# Prod - Vendor installé
+# Minikube - Image autonome avec fixtures
+#-----------------------------------------------
+FROM base AS minikube
+
+ENV APP_ENV=dev
+
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
+COPY composer.json composer.lock symfony.lock ./
+
+RUN composer install --prefer-dist --no-interaction --optimize-autoloader --no-scripts --no-progress
+
+COPY . .
+
+RUN composer run-script post-install-cmd || true && \
+    composer dump-autoload --optimize
+
+RUN chown -R www-data:www-data /app /var/log/nginx /run/nginx /var/lib/nginx && \
+    chmod -R 755 /app/var
+
+USER www-data
+
+#-----------------------------------------------
+# Prod - Vendor installé (sans deps dev)
 #-----------------------------------------------
 FROM base AS prod
 

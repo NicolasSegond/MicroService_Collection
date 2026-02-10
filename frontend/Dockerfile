@@ -7,10 +7,9 @@ WORKDIR /app
 
 RUN apk add --no-cache dos2unix
 
-COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 
-RUN dos2unix /usr/local/bin/docker-entrypoint && \
-    chmod +x /usr/local/bin/docker-entrypoint
+RUN dos2unix /usr/local/bin/docker-entrypoint && chmod +x /usr/local/bin/docker-entrypoint
 
 ENTRYPOINT ["docker-entrypoint"]
 
@@ -28,20 +27,34 @@ USER 1000:1000
 CMD ["npm", "run", "dev"]
 
 #-----------------------------------------------
-# Prod - Build optimisé, servi par vite preview
+# Prod - Build optimisé, servi par nginx
 #-----------------------------------------------
-FROM base AS prod
-
-ENV NODE_ENV=prod
+FROM base AS build
 
 COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci
 
 COPY . .
 RUN npm run build
 
+#-----------------------------------------------
+# Prod - Nginx pour servir les fichiers statiques
+#-----------------------------------------------
+FROM nginx:alpine AS prod
+
+# Copier la config nginx
+RUN echo 'server { \
+    listen 3000; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+# Copier les fichiers buildés
+COPY --from=build /app/dist /usr/share/nginx/html
+
 EXPOSE 3000
 
-USER node
-
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["nginx", "-g", "daemon off;"]

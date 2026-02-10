@@ -103,6 +103,10 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: NPM Security Audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
       - name: Run ESLint
         working-directory: ./frontend
         run: npm run lint
@@ -151,14 +155,84 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=NicolasSegond_MicroService_Collection
-            -Dsonar.organization=nicolassegond
-            -Dsonar.sources=frontend/src,article-service/src
-            -Dsonar.tests=frontend/src/__tests__,frontend/src/__mocks__,article-service/tests
-            -Dsonar.exclusions=**/vendor/**,**/var/**,**/node_modules/**,**/dist/**,**/__tests__/**,**/__mocks__/**,article-service/public/**,article-service/src/DataFixtures/**,article-service/src/Kernel.php
-            -Dsonar.coverage.exclusions=article-service/src/Repository/**,article-service/src/Entity/**
             -Dsonar.javascript.lcov.reportPaths=${{ env.FRONT_COVERAGE }}
             -Dsonar.php.coverage.reportPaths=${{ env.PHP_COVERAGE }}
+
+  perf_tests:
+    name: Performance • JMeter Load Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [backend, frontend]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Decrypt environment file
+        env:
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          openssl enc -aes-256-cbc -d -pbkdf2 -in .env.enc -out .env -pass pass:"$ENCRYPTION_KEY"
+
+      - name: Start services (CI mode - no auth)
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for Keycloak..."
+          timeout 180 bash -c 'until curl -sf http://localhost:8080/health/ready; do sleep 5; done'
+
+          echo "Waiting for Traefik..."
+          timeout 120 bash -c 'until docker compose exec -T traefik traefik healthcheck; do sleep 5; done'
+
+          echo "Waiting for API..."
+          timeout 120 bash -c 'until curl -sf http://localhost:8000/api/articles; do sleep 5; done'
+
+          echo "All services ready!"
+
+      - name: Create JMeter output directory
+        run: mkdir -p .github/perf/report
+
+      - name: Run JMeter tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}/.github/perf:/jmeter \
+            alpine/jmeter:5.6 \
+            -n \
+            -t /jmeter/test.jmx \
+            -l /jmeter/results.jtl \
+            -e -o /jmeter/report \
+            -Japi.host=localhost \
+            -Japi.port=8000 \
+            -Jkeycloak.host=localhost \
+            -Jkeycloak.port=8080 \
+            -Jusers.public=10 \
+            -Jusers.auth=5 \
+            -Jusers.stress=20 \
+            -Jrampup=5 \
+            -Jrampup.stress=30
+
+      - name: Upload JMeter HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jmeter-report
+          path: .github/perf/report/
+          retention-days: 7
+
+      - name: Upload JMeter Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jmeter-results
+          path: .github/perf/results.jtl
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
 
   zap-local:
     name: Security • ZAP Scan (Local)
@@ -237,3 +311,87 @@ jobs:
       - name: Stop services
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  gitleaks:
+    name: Security • GitLeaks (Secret Scanning)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: GitLeaks Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build • Docker Images (ghcr.io)
+    runs-on: ubuntu-latest
+    needs: [sonarcloud]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Article Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./article-service
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/article-service:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy Scan - Article Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-article-service.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Trivy Scan - Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: trivy-*.sarif
+          retention-days: 7

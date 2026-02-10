@@ -1,0 +1,323 @@
+# Services: Article Service + Frontend
+---
+# ============================================
+# FRONTEND CONFIG
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/component: frontend
+data:
+  VITE_KEYCLOAK_URL: "http://localhost:8080"
+  VITE_KEYCLOAK_REALM: "collector_realms"
+  VITE_KEYCLOAK_CLIENT_ID: "collector_front"
+  VITE_API_URL: "http://localhost:8000"
+---
+# ============================================
+# FRONTEND
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/component: frontend
+spec:
+  ports:
+    - port: 3000
+      name: http
+  selector:
+    app: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    app.kubernetes.io/name: frontend
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        app.kubernetes.io/name: frontend
+        app.kubernetes.io/component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+        - name: frontend
+          image: frontend
+          imagePullPolicy: Never  # Minikube: use local images
+          ports:
+            - containerPort: 3000
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+          envFrom:
+            - configMapRef:
+                name: frontend-config
+          env:
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+---
+# ============================================
+# ARTICLE SERVICE
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: article-service
+  labels:
+    app: article-service
+    app.kubernetes.io/name: article-service
+    app.kubernetes.io/component: backend
+spec:
+  ports:
+    - port: 8000
+      name: http
+  selector:
+    app: article-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: article-service
+  labels:
+    app: article-service
+    app.kubernetes.io/name: article-service
+    app.kubernetes.io/component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: article-service
+  template:
+    metadata:
+      labels:
+        app: article-service
+        app.kubernetes.io/name: article-service
+        app.kubernetes.io/component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 82
+        runAsGroup: 82
+        fsGroup: 82
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command: ["/bin/sh", "-c", "until pg_isready -h article-db -U article_admin -d article_db; do sleep 2; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ARTICLE_POSTGRES_PASSWORD
+        - name: wait-for-kafka
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/sh", "-c", "until kafka-broker-api-versions --bootstrap-server kafka-0.kafka.marketplace.svc.cluster.local:9092 2>/dev/null; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+        - name: init-uploads
+          image: article-service
+          imagePullPolicy: Never
+          command: ["/bin/sh", "-c", "if [ -z \"$(ls -A /uploads 2>/dev/null)\" ]; then cp -r /app/public/uploads/* /uploads/ 2>/dev/null || true; fi"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 82
+          volumeMounts:
+            - name: uploads
+              mountPath: /uploads
+      containers:
+        - name: article-service
+          image: article-service
+          imagePullPolicy: Never  # Minikube: use local images
+          ports:
+            - containerPort: 8000
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ARTICLE_DATABASE_URL
+            - name: KAFKA_BROKERS
+              value: "kafka-0.kafka.marketplace.svc.cluster.local:29092"
+            - name: KEYCLOAK_URL
+              value: "http://keycloak:8080"
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: KEYCLOAK_ADMIN
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/public/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: article-uploads-pvc
+---
+# ============================================
+# ARTICLE SERVICE CONSUMER (Kafka)
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: article-service-consumer
+  labels:
+    app: article-service-consumer
+    app.kubernetes.io/name: article-service-consumer
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: article-service-consumer
+  template:
+    metadata:
+      labels:
+        app: article-service-consumer
+        app.kubernetes.io/name: article-service-consumer
+        app.kubernetes.io/component: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 82
+        runAsGroup: 82
+        fsGroup: 82
+      initContainers:
+        - name: wait-for-db
+          image: postgres:15-alpine
+          command: ["/bin/sh", "-c", "until pg_isready -h article-db -U article_admin -d article_db; do sleep 2; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+        - name: wait-for-kafka
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/sh", "-c", "until kafka-broker-api-versions --bootstrap-server kafka-0.kafka.marketplace.svc.cluster.local:9092 2>/dev/null; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+        - name: wait-for-keycloak
+          image: curlimages/curl:8.5.0
+          command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 100
+      containers:
+        - name: consumer
+          image: article-service
+          imagePullPolicy: Never  # Minikube: use local images
+          command: ["php", "bin/console", "app:consume-keycloak-events"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+          env:
+            - name: APP_ENV
+              value: "dev"
+            - name: SKIP_MIGRATIONS
+              value: "true"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ARTICLE_DATABASE_URL
+            - name: KAFKA_BROKERS
+              value: "kafka-0.kafka.marketplace.svc.cluster.local:29092"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"

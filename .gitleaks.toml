@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+# Ignore dev/test secrets in old k8s commits (files no longer exist)
+[allowlist]
+commits = [
+    "cd8f8e4c1835788c3731118484c43f86e33280f8",
+    "c7c5f13e2e297439c86ebdae1271d87a06fa0a24"
+]

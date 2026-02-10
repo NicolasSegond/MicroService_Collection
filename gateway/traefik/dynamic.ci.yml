@@ -79,6 +79,15 @@ http:
         - public-chain
       service: user-service
 
+    # ARTICLE SERVICE - Admin (NO AUTH for CI)
+    article-admin-api:
+      rule: "PathPrefix(`/api/admin/articles`)"
+      entryPoints:
+        - web
+      middlewares:
+        - public-chain
+      service: article-service
+
     # ARTICLE SERVICE - NO AUTH
     article-api:
       rule: "PathPrefix(`/api/articles`)"

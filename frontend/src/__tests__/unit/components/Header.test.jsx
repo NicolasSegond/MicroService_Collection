@@ -60,15 +60,20 @@ describe('Header', () => {
     });
 
     it('ouvre le menu dropdown au clic sur l\'avatar', () => {
-        const mockLogout = vi.fn();
+        const mockClearToken = vi.fn();
         vi.spyOn(KeycloakContext, 'useKeycloak').mockReturnValue({
             keycloak: {
                 authenticated: true,
                 tokenParsed: { preferred_username: 'User' },
-                logout: mockLogout
+                authServerUrl: 'http://localhost:8080',
+                realm: 'test',
+                idToken: 'test-token',
+                clearToken: mockClearToken
             },
             initialized: true
         });
+
+        vi.useFakeTimers();
 
         render(<MemoryRouter><Header /></MemoryRouter>);
 
@@ -79,7 +84,11 @@ describe('Header', () => {
         expect(screen.getByText('Déconnexion')).toBeInTheDocument();
 
         fireEvent.click(screen.getByText('Déconnexion'));
-        expect(mockLogout).toHaveBeenCalled();
+
+        vi.advanceTimersByTime(500);
+        expect(mockClearToken).toHaveBeenCalled();
+
+        vi.useRealTimers();
     });
 
     it('gère le menu mobile', () => {
