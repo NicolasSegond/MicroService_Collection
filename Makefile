@@ -214,5 +214,13 @@ monitoring-install: ## Installe Prometheus + Grafana + AlertManager via Helm
 		--from-file=microservices.json=k8s/grafana-dashboards/microservices_dashboard.json \
 		--namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
 	@kubectl label configmap grafana-dashboard-microservices grafana_dashboard=1 --namespace monitoring --overwrite >/dev/null 2>&1
+	@DISCORD_WEBHOOK=$$(grep '^DISCORD_WEBHOOK=' .env 2>/dev/null | cut -d'=' -f2-); \
+	if [ -n "$$DISCORD_WEBHOOK" ]; then \
+		kubectl create secret generic discord-webhook \
+			--from-literal=DISCORD_WEBHOOK=$$DISCORD_WEBHOOK \
+			--namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 && \
+		kubectl apply -f k8s/alertmanager-discord.yaml >/dev/null 2>&1 && \
+		echo "$(GREEN)  ✓ Alertes Discord configurées$(RESET)"; \
+	fi
 	@echo "$(GREEN)  ✓ Prometheus + Grafana + AlertManager installés$(RESET)"
 

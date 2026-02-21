@@ -1,15 +1,6 @@
-# kube-prometheus-stack values for MicroService Collection POC
-# Install: helm install prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f values.yaml
-
-# ===========================================
-# GLOBAL
-# ===========================================
 fullnameOverride: "prometheus"
 namespaceOverride: "monitoring"
 
-# ===========================================
-# ALERTMANAGER
-# ===========================================
 alertmanager:
   enabled: true
   config:
@@ -32,6 +23,7 @@ alertmanager:
         - receiver: 'critical'
           matchers:
             - severity = critical
+          group_interval: 1m
         - receiver: 'warning'
           matchers:
             - severity = warning
@@ -74,9 +66,6 @@ alertmanager:
             requests:
               storage: 1Gi
 
-# ===========================================
-# PROMETHEUS
-# ===========================================
 prometheus:
   enabled: true
   prometheusSpec:
@@ -136,9 +125,6 @@ prometheus:
             action: replace
             target_label: pod
 
-# ===========================================
-# GRAFANA
-# ===========================================
 grafana:
   enabled: true
   adminPassword: "admin"  # Override via --set or secret
@@ -184,9 +170,6 @@ grafana:
     server:
       root_url: "http://localhost:3001"
 
-# ===========================================
-# ADDITIONAL PROMETHEUS RULES (Custom Alerts)
-# ===========================================
 additionalPrometheusRulesMap:
   marketplace-rules:
     groups:
@@ -215,15 +198,15 @@ additionalPrometheusRulesMap:
               summary: "High P99 latency detected"
               description: "P99 latency is {{ $value | printf \"%.2f\" }}s (threshold: 1s)"
 
-          # Service down
+          # Service down (0 replicas disponibles)
           - alert: ServiceDown
-            expr: up{job=~".*traefik.*|.*article.*"} == 0
-            for: 1m
+            expr: kube_deployment_status_replicas_available{namespace="marketplace"} == 0
+            for: 30s
             labels:
               severity: critical
             annotations:
-              summary: "Service {{ $labels.job }} is down"
-              description: "{{ $labels.instance }} has been down for more than 1 minute"
+              summary: "Service {{ $labels.deployment }} is down"
+              description: "{{ $labels.deployment }} has 0 available replicas for more than 30 seconds"
 
           # No traffic (possible issue)
           - alert: NoTraffic
@@ -247,10 +230,6 @@ additionalPrometheusRulesMap:
               summary: "Pod {{ $labels.pod }} is restarting frequently"
               description: "{{ $labels.pod }} has restarted {{ $value }} times in the last hour"
 
-# ===========================================
-# SERVICEMONITORS
-# ===========================================
-# ServiceMonitor for Traefik
 additionalServiceMonitors:
   - name: traefik
     selector:
@@ -264,10 +243,6 @@ additionalServiceMonitors:
         interval: 15s
         path: /metrics
 
-# ===========================================
-# COMPONENTS (POC-optimized)
-# ===========================================
-# Disable heavy components not needed for POC
 kubeApiServer:
   enabled: false
 

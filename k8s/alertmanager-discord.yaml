@@ -1,15 +1,6 @@
 # Alertmanager Discord Adapter
 # Convertit les alertes AlertManager au format Discord
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: discord-webhook
-  namespace: monitoring
-type: Opaque
-stringData:
-  # Remplacer par votre webhook Discord
-  DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1474807471037091993/Ig7TDI8UTrps9nRyvJ6zwhmmmh2QHRVrzObzVEnwFY-oM9Lo7N68SSGO_poFACUwHkkR"
+# Le secret est créé via: kubectl create secret generic discord-webhook --from-literal=DISCORD_WEBHOOK=$DISCORD_WEBHOOK -n monitoring
 ---
 apiVersion: apps/v1
 kind: Deployment
