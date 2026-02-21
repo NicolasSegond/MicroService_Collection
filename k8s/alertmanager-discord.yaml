@@ -1,0 +1,60 @@
+# Alertmanager Discord Adapter
+# Convertit les alertes AlertManager au format Discord
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: discord-webhook
+  namespace: monitoring
+type: Opaque
+stringData:
+  # Remplacer par votre webhook Discord
+  DISCORD_WEBHOOK: "https://discord.com/api/webhooks/1474807471037091993/Ig7TDI8UTrps9nRyvJ6zwhmmmh2QHRVrzObzVEnwFY-oM9Lo7N68SSGO_poFACUwHkkR"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-discord
+  namespace: monitoring
+  labels:
+    app: alertmanager-discord
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager-discord
+  template:
+    metadata:
+      labels:
+        app: alertmanager-discord
+    spec:
+      containers:
+        - name: alertmanager-discord
+          image: benjojo/alertmanager-discord:latest
+          ports:
+            - containerPort: 9094
+          env:
+            - name: DISCORD_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: discord-webhook
+                  key: DISCORD_WEBHOOK
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "50m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-discord
+  namespace: monitoring
+spec:
+  ports:
+    - port: 9094
+      targetPort: 9094
+  selector:
+    app: alertmanager-discord

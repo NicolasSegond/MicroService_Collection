@@ -154,22 +154,22 @@ spec:
         runAsGroup: 82
         fsGroup: 82
       initContainers:
-        - name: wait-for-db
-          image: postgres:15-alpine
-          command: ["/bin/sh", "-c", "until pg_isready -h article-db -U article_admin -d article_db; do sleep 2; done"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 999
-          env:
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: ARTICLE_POSTGRES_PASSWORD
-        - name: wait-for-kafka
-          image: confluentinc/cp-kafka:7.5.0
-          command: ["/bin/sh", "-c", "until kafka-broker-api-versions --bootstrap-server kafka-0.kafka.marketplace.svc.cluster.local:9092 2>/dev/null; do sleep 5; done"]
+        - name: init-dependencies
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for dependencies in parallel..."
+              # Wait for DB (using nc since busybox doesn't have pg_isready)
+              until nc -z article-db 5432; do sleep 1; done &
+              PID_DB=$!
+              # Wait for Kafka
+              until nc -z kafka-0.kafka.marketplace.svc.cluster.local 9092; do sleep 1; done &
+              PID_KAFKA=$!
+              # Wait for both
+              wait $PID_DB $PID_KAFKA
+              echo "All dependencies ready"
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -224,17 +224,23 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          startupProbe:
+            httpGet:
+              path: /api
+              port: 8000
+            failureThreshold: 30
+            periodSeconds: 2
           readinessProbe:
             httpGet:
               path: /api
               port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 5
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /api
               port: 8000
-            initialDelaySeconds: 60
+            initialDelaySeconds: 10
             periodSeconds: 30
           volumeMounts:
             - name: uploads
@@ -273,27 +279,21 @@ spec:
         runAsGroup: 82
         fsGroup: 82
       initContainers:
-        - name: wait-for-db
-          image: postgres:15-alpine
-          command: ["/bin/sh", "-c", "until pg_isready -h article-db -U article_admin -d article_db; do sleep 2; done"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 999
-        - name: wait-for-kafka
-          image: confluentinc/cp-kafka:7.5.0
-          command: ["/bin/sh", "-c", "until kafka-broker-api-versions --bootstrap-server kafka-0.kafka.marketplace.svc.cluster.local:9092 2>/dev/null; do sleep 5; done"]
+        - name: init-dependencies
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for dependencies in parallel..."
+              until nc -z article-db 5432; do sleep 1; done &
+              until nc -z kafka-0.kafka.marketplace.svc.cluster.local 9092; do sleep 1; done &
+              wait
+              echo "All dependencies ready"
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
             runAsUser: 1000
-        - name: wait-for-keycloak
-          image: curlimages/curl:8.5.0
-          command: ["/bin/sh", "-c", "until curl -sf http://keycloak:8080/health/ready; do sleep 5; done"]
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 100
       containers:
         - name: consumer
           image: article-service

@@ -1,0 +1,323 @@
+# kube-prometheus-stack values for MicroService Collection POC
+# Install: helm install prometheus-stack prometheus-community/kube-prometheus-stack -n monitoring -f values.yaml
+
+# ===========================================
+# GLOBAL
+# ===========================================
+fullnameOverride: "prometheus"
+namespaceOverride: "monitoring"
+
+# ===========================================
+# ALERTMANAGER
+# ===========================================
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'default'
+      routes:
+        # Filtrer les alertes de test/internes (ne pas envoyer à Discord)
+        - receiver: 'null'
+          matchers:
+            - alertname = Watchdog
+        - receiver: 'null'
+          matchers:
+            - alertname = InfoInhibitor
+        - receiver: 'critical'
+          matchers:
+            - severity = critical
+        - receiver: 'warning'
+          matchers:
+            - severity = warning
+    receivers:
+      - name: 'null'
+        # Receiver vide pour ignorer certaines alertes
+      - name: 'default'
+        webhook_configs:
+          - url: 'http://alertmanager-discord.monitoring:9094'
+            send_resolved: true
+      - name: 'critical'
+        webhook_configs:
+          - url: 'http://alertmanager-discord.monitoring:9094'
+            send_resolved: true
+      - name: 'warning'
+        webhook_configs:
+          - url: 'http://alertmanager-discord.monitoring:9094'
+            send_resolved: true
+    inhibit_rules:
+      - source_matchers:
+          - severity = critical
+        target_matchers:
+          - severity = warning
+        equal: ['alertname', 'namespace']
+
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "10m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+# ===========================================
+# PROMETHEUS
+# ===========================================
+prometheus:
+  enabled: true
+  prometheusSpec:
+    replicas: 1
+    retention: 15d
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+
+    # Label cluster requis pour les dashboards K8s
+    externalLabels:
+      cluster: minikube
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+    # Scrape pods with prometheus.io annotations (compatibility)
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+    # Additional scrape configs for annotation-based discovery
+    additionalScrapeConfigs:
+      - job_name: 'kubernetes-pods-annotations'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [marketplace]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+# ===========================================
+# GRAFANA
+# ===========================================
+grafana:
+  enabled: true
+  adminPassword: "admin"  # Override via --set or secret
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  persistence:
+    enabled: true
+    size: 1Gi
+
+  # Datasource Prometheus avec UID fixe (pour compatibilité dashboards)
+  sidecar:
+    datasources:
+      uid: prometheus
+
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'custom'
+          orgId: 1
+          folder: 'MicroServices'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/custom
+
+  # Default dashboards (POC-friendly selection)
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: browser
+
+  grafana.ini:
+    users:
+      allow_sign_up: false
+    server:
+      root_url: "http://localhost:3001"
+
+# ===========================================
+# ADDITIONAL PROMETHEUS RULES (Custom Alerts)
+# ===========================================
+additionalPrometheusRulesMap:
+  marketplace-rules:
+    groups:
+      - name: marketplace.availability
+        rules:
+          # SLA < 99.9%
+          - alert: HighErrorRate
+            expr: |
+              (sum(rate(traefik_router_requests_total{code=~"5.."}[5m]))
+              / sum(rate(traefik_router_requests_total[5m]))) * 100 > 1
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 1%)"
+
+          # Latence P99 > 1s
+          - alert: HighLatency
+            expr: |
+              histogram_quantile(0.99, sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le)) > 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High P99 latency detected"
+              description: "P99 latency is {{ $value | printf \"%.2f\" }}s (threshold: 1s)"
+
+          # Service down
+          - alert: ServiceDown
+            expr: up{job=~".*traefik.*|.*article.*"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.job }} is down"
+              description: "{{ $labels.instance }} has been down for more than 1 minute"
+
+          # No traffic (possible issue)
+          - alert: NoTraffic
+            expr: sum(rate(traefik_router_requests_total[5m])) == 0
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "No traffic detected"
+              description: "No requests received in the last 10 minutes"
+
+      - name: marketplace.resources
+        rules:
+          # Pod restarts
+          - alert: PodFrequentRestart
+            expr: increase(kube_pod_container_status_restarts_total{namespace="marketplace"}[1h]) > 3
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is restarting frequently"
+              description: "{{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+
+# ===========================================
+# SERVICEMONITORS
+# ===========================================
+# ServiceMonitor for Traefik
+additionalServiceMonitors:
+  - name: traefik
+    selector:
+      matchLabels:
+        app: traefik
+    namespaceSelector:
+      matchNames:
+        - marketplace
+    endpoints:
+      - port: dashboard
+        interval: 15s
+        path: /metrics
+
+# ===========================================
+# COMPONENTS (POC-optimized)
+# ===========================================
+# Disable heavy components not needed for POC
+kubeApiServer:
+  enabled: false
+
+kubelet:
+  enabled: true
+
+kubeControllerManager:
+  enabled: false
+
+coreDns:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+# Node exporter (useful for resource monitoring)
+nodeExporter:
+  enabled: true
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "100m"
+
+# kube-state-metrics (pod/deployment metrics)
+kube-state-metrics:
+  enabled: true
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "100m"
+
+# Prometheus operator
+prometheusOperator:
+  enabled: true
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "10m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"

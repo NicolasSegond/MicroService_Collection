@@ -1,7 +1,7 @@
 # Makefile - Marketplace Microservices
 
 .PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-update k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images \
-        demo-crash demo-scale
+        demo-crash demo-scale monitoring-install
 
 CYAN := \033[36m
 GREEN := \033[32m
@@ -42,6 +42,17 @@ help: ## Affiche cette aide
 	@echo "     $(CYAN)make demo-crash$(RESET)    Auto-healing (kill + watch rebuild)"
 	@echo "     $(CYAN)make demo-scale$(RESET)    Scalabilité (make demo-scale r=3)"
 	@echo ""
+	@echo "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
+	@echo "$(GREEN)  MONITORING$(RESET)"
+	@echo "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
+	@echo ""
+	@echo "     $(CYAN)make monitoring-install$(RESET)  Prometheus + Grafana + AlertManager"
+	@echo ""
+	@echo "     Accès (après k8s-forward):"
+	@echo "       Grafana:      http://localhost:3001 (admin/admin)"
+	@echo "       Prometheus:   http://localhost:9090"
+	@echo "       AlertManager: http://localhost:9093"
+	@echo ""
 
 # ============================================
 # DOCKER COMPOSE
@@ -74,26 +85,33 @@ k8s-up:
 	@echo ""
 	@echo "$(BOLD)$(CYAN)═══ INSTALLATION KUBERNETES ═══$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)[1/4]$(RESET) Création du cluster..."
+	@echo "$(YELLOW)[1/5]$(RESET) Création du cluster..."
 	@minikube start --cpus=2 --memory=4192 --driver=docker
 	@minikube addons enable ingress >/dev/null 2>&1
 	@minikube addons enable metrics-server >/dev/null 2>&1
 	@echo "$(GREEN)  ✓ Cluster créé$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)[2/4]$(RESET) Build des images..."
+	@echo "$(YELLOW)[2/5]$(RESET) Build des images..."
 	@$(MAKE) --no-print-directory build-images
 	@echo "$(GREEN)  ✓ Images OK$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)[3/4]$(RESET) Déploiement..."
+	@echo "$(YELLOW)[3/5]$(RESET) Déploiement application..."
 	@kubectl create namespace marketplace --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create secret generic app-secrets --from-env-file=.env -n marketplace --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl apply -k k8s/ >/dev/null
-	@echo "$(GREEN)  ✓ Déployé$(RESET)"
+	@echo "$(GREEN)  ✓ Application déployée$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)[4/4]$(RESET) Attente des services..."
-	@kubectl wait --for=condition=ready pod -l app=keycloak -n marketplace --timeout=300s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Keycloak$(RESET)" || echo "$(RED)  ✗ Keycloak$(RESET)"
-	@kubectl wait --for=condition=ready pod -l app=article-service -n marketplace --timeout=180s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Article Service$(RESET)" || echo "$(RED)  ✗ Article Service$(RESET)"
-	@kubectl wait --for=condition=ready pod -l app=frontend -n marketplace --timeout=180s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Frontend$(RESET)" || echo "$(RED)  ✗ Frontend$(RESET)"
+	@echo "$(YELLOW)[4/5]$(RESET) Installation monitoring..."
+	@$(MAKE) --no-print-directory monitoring-install
+	@echo ""
+	@echo "$(YELLOW)[5/5]$(RESET) Attente des services (parallèle)..."
+	@( kubectl wait --for=condition=ready pod -l app=keycloak -n marketplace --timeout=120s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Keycloak$(RESET)" || echo "$(RED)  ✗ Keycloak$(RESET)" ) & \
+	( kubectl wait --for=condition=ready pod -l app=article-service -n marketplace --timeout=120s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Article Service$(RESET)" || echo "$(RED)  ✗ Article Service$(RESET)" ) & \
+	( kubectl wait --for=condition=ready pod -l app=frontend -n marketplace --timeout=60s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Frontend$(RESET)" || echo "$(RED)  ✗ Frontend$(RESET)" ) & \
+	( kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=prometheus -n monitoring --timeout=120s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Prometheus$(RESET)" || echo "$(RED)  ✗ Prometheus$(RESET)" ) & \
+	( kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n monitoring --timeout=60s >/dev/null 2>&1 && echo "$(GREEN)  ✓ Grafana$(RESET)" || echo "$(RED)  ✗ Grafana$(RESET)" ) & \
+	( kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=alertmanager -n monitoring --timeout=60s >/dev/null 2>&1 && echo "$(GREEN)  ✓ AlertManager$(RESET)" || echo "$(RED)  ✗ AlertManager$(RESET)" ) & \
+	wait
 	@echo ""
 	@echo "$(BOLD)$(GREEN)═══ PRÊT ! ═══$(RESET)"
 	@echo "Lancez: $(CYAN)make k8s-forward$(RESET)"
@@ -176,4 +194,25 @@ demo-scale: ## Démo scalabilité : scale article-service (make demo-scale r=3)
 	echo "" && \
 	echo "$(YELLOW)Watch scaling (Ctrl+C pour quitter):$(RESET)" && \
 	kubectl get pods -n marketplace -l app=article-service -w
+
+# ============================================
+# MONITORING (kube-prometheus-stack)
+# ============================================
+
+HELM := $(shell which helm 2>/dev/null || echo "$(HOME)/.local/bin/helm")
+
+monitoring-install: ## Installe Prometheus + Grafana + AlertManager via Helm
+	@$(HELM) repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
+	@$(HELM) repo update >/dev/null 2>&1
+	@kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+	@$(HELM) upgrade --install prometheus-stack prometheus-community/kube-prometheus-stack \
+		--namespace monitoring \
+		--values k8s/prometheus-stack/values.yaml \
+		--set grafana.adminPassword=admin \
+		--wait --timeout 10m >/dev/null 2>&1
+	@kubectl create configmap grafana-dashboard-microservices \
+		--from-file=microservices.json=k8s/grafana-dashboards/microservices_dashboard.json \
+		--namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
+	@kubectl label configmap grafana-dashboard-microservices grafana_dashboard=1 --namespace monitoring --overwrite >/dev/null 2>&1
+	@echo "$(GREEN)  ✓ Prometheus + Grafana + AlertManager installés$(RESET)"
 
