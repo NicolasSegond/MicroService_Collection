@@ -9,7 +9,6 @@ resources:
   - auth.yaml
   - services.yaml
   - gateway.yaml
-  # monitoring.yaml remplacé par kube-prometheus-stack (voir make monitoring-install)
 
 labels:
   - pairs:

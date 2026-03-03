@@ -145,9 +145,15 @@ data:
           entryPoints: [web]
           middlewares: [public-chain]
           service: article-service
+      serversTransports:
+        fast-timeout:
+          forwardingTimeouts:
+            dialTimeout: "500ms"
+            responseHeaderTimeout: "3s"
       services:
         article-service:
           loadBalancer:
+            serversTransport: fast-timeout
             servers:
               - url: "http://article-service:8000"
 ---

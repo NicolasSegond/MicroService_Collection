@@ -63,7 +63,7 @@ spec:
       containers:
         - name: frontend
           image: frontend
-          imagePullPolicy: Never  # Minikube: use local images
+          imagePullPolicy: Never
           ports:
             - containerPort: 3000
               name: http
@@ -102,9 +102,9 @@ spec:
               mountPath: /var/run
       volumes:
         - name: nginx-cache
-          emptyDir: {}
+          emptyDir: { }
         - name: nginx-run
-          emptyDir: {}
+          emptyDir: { }
 ---
 # ============================================
 # ARTICLE SERVICE
@@ -177,7 +177,7 @@ spec:
         - name: init-uploads
           image: article-service
           imagePullPolicy: Never
-          command: ["/bin/sh", "-c", "if [ -z \"$(ls -A /uploads 2>/dev/null)\" ]; then cp -r /app/public/uploads/* /uploads/ 2>/dev/null || true; fi"]
+          command: [ "/bin/sh", "-c", "if [ -z \"$(ls -A /uploads 2>/dev/null)\" ]; then cp -r /app/public/uploads/* /uploads/ 2>/dev/null || true; fi" ]
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -188,7 +188,7 @@ spec:
       containers:
         - name: article-service
           image: article-service
-          imagePullPolicy: Never  # Minikube: use local images
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
               name: http
@@ -297,8 +297,8 @@ spec:
       containers:
         - name: consumer
           image: article-service
-          imagePullPolicy: Never  # Minikube: use local images
-          command: ["php", "bin/console", "app:consume-keycloak-events"]
+          imagePullPolicy: Never
+          command: [ "php", "bin/console", "app:consume-keycloak-events" ]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
