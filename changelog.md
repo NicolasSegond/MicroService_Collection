@@ -1,5 +1,9 @@
 # Changelog—MicroService Collection
 
+## v1.0.7 - 05-03-2026
+
+- add kube-prometheus-stack for monitoring and alerting in Kubernetes cluster
+
 ## v1.0.6 - 10-02-2026
 
 - Minikube implementation for local Kubernetes cluster setup
