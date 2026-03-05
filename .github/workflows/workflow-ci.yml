@@ -336,10 +336,14 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set image name to lowercase
+        run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -357,8 +361,8 @@ jobs:
           context: ./article-service
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/article-service:latest
+            ghcr.io/${{ env.REPO_LC }}/article-service:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LC }}/article-service:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -368,15 +372,15 @@ jobs:
           context: ./frontend
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/frontend:latest
+            ghcr.io/${{ env.REPO_LC }}/frontend:${{ github.sha }}
+            ghcr.io/${{ env.REPO_LC }}/frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Trivy Scan - Article Service
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository }}/article-service:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.REPO_LC }}/article-service:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-article-service.sarif'
           severity: 'CRITICAL,HIGH'
@@ -384,14 +388,47 @@ jobs:
       - name: Trivy Scan - Frontend
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.REPO_LC }}/frontend:${{ github.sha }}
           format: 'sarif'
           output: 'trivy-frontend.sarif'
           severity: 'CRITICAL,HIGH'
 
+      - name: Trivy Report - Article Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ env.REPO_LC }}/article-service:${{ github.sha }}
+          format: 'table'
+          output: 'trivy-article-service.txt'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Trivy Report - Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ env.REPO_LC }}/frontend:${{ github.sha }}
+          format: 'table'
+          output: 'trivy-frontend.txt'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy SARIF - Article Service
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-article-service.sarif
+          category: trivy-article-service
+
+      - name: Upload Trivy SARIF - Frontend
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-frontend.sarif
+          category: trivy-frontend
+
       - name: Upload Trivy Reports
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: trivy-reports
-          path: trivy-*.sarif
+          path: |
+            trivy-*.sarif
+            trivy-*.txt
           retention-days: 7

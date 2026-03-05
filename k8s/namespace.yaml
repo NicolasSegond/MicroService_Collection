@@ -1,4 +1,3 @@
-# Namespace for Marketplace microservices
 apiVersion: v1
 kind: Namespace
 metadata:

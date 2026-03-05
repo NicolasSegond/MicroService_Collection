@@ -7,27 +7,20 @@ if [ ! -d 'vendor/' ]; then
     composer install --prefer-dist --no-progress --no-interaction
 fi
 
-# Attendre que la base de données soit prête
+# Attendre que la base de données soit prête (init container l'a déjà vérifiée, check rapide)
 if [ -n "$DATABASE_URL" ]; then
-    echo "Waiting for database to be ready..."
-    ATTEMPTS_LEFT_TO_REACH_DATABASE=60
-
-    until [ $ATTEMPTS_LEFT_TO_REACH_DATABASE -eq 0 ] || DATABASE_ERROR=$(php bin/console dbal:run-sql -q "SELECT 1" 2>&1); do
-        if [ $? -eq 255 ]; then
-            ATTEMPTS_LEFT_TO_REACH_DATABASE=0
-            break
-        fi
+    echo "Checking database connection..."
+    # Check rapide - la DB devrait déjà être prête via init container K8s
+    ATTEMPTS=5
+    until php bin/console dbal:run-sql -q "SELECT 1" >/dev/null 2>&1 || [ $ATTEMPTS -eq 0 ]; do
         sleep 1
-        ATTEMPTS_LEFT_TO_REACH_DATABASE=$((ATTEMPTS_LEFT_TO_REACH_DATABASE - 1))
-        echo "Waiting for database... $ATTEMPTS_LEFT_TO_REACH_DATABASE attempts left."
+        ATTEMPTS=$((ATTEMPTS - 1))
     done
 
-    if [ $ATTEMPTS_LEFT_TO_REACH_DATABASE -eq 0 ]; then
-        echo "Database is not reachable:"
-        echo "$DATABASE_ERROR"
+    if [ $ATTEMPTS -eq 0 ]; then
+        echo "Database not reachable"
         exit 1
     fi
-
     echo "Database is ready"
 
     # Exécuter les migrations si elles existent

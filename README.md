@@ -176,7 +176,8 @@ MicroService_Collection/
 │   ├── infrastructure.yaml      # DB, Kafka, Keycloak
 │   ├── gateway.yaml             # Traefik & Oathkeeper
 │   ├── auth.yaml                # Configuration auth
-│   ├── monitoring.yaml          # Prometheus & Grafana
+│   ├── prometheus-stack/        # Configuration monitoring (Helm)
+│   │   └── values.yaml          # Values kube-prometheus-stack
 │   ├── scripts/                 # Scripts utilitaires
 │   │   └── k8s-forward.sh       # Port forwarding
 │   └── grafana-dashboards/      # Dashboards pre-configures
@@ -193,10 +194,22 @@ MicroService_Collection/
 
 ## Prerequis
 
+### Obligatoires
+
+- **Docker Desktop** 20.10+
 - **Minikube** 1.30+
-- **kubectl**
-- **Docker** 20.10+
-- **Git**
+- **kubectl** 1.28+
+- **Helm** 3.x
+- **Git** 2.x
+
+### Optionnels (developpement local sans Docker)
+
+- **Node.js** 20+ (frontend)
+- **PHP** 8.3+ / **Composer** (backend)
+
+### Windows
+
+- **WSL2** recommande - installer Minikube, kubectl et Helm dans WSL
 
 ---
 
@@ -247,14 +260,15 @@ make k8s-status
 
 ### Kubernetes
 
-| Commande                    | Description                                |
-|-----------------------------|--------------------------------------------|
-| `make k8s-start`            | Demarrer Minikube et deployer les services |
-| `make k8s-stop`             | Arreter Minikube                           |
-| `make k8s-delete`           | Supprimer le cluster Minikube              |
-| `make k8s-forward`          | Configurer le port forwarding              |
-| `make k8s-status`           | Afficher l'etat des pods                   |
-| `make k8s-logs p=<service>` | Voir les logs d'un service                 |
+| Commande                    | Description                                     |
+|-----------------------------|-------------------------------------------------|
+| `make k8s-up`               | Demarrer Minikube et deployer tous les services |
+| `make k8s-stop`             | Arreter Minikube                                |
+| `make k8s-delete`           | Supprimer le cluster Minikube                   |
+| `make k8s-forward`          | Configurer le port forwarding                   |
+| `make k8s-status`           | Afficher l'etat des pods                        |
+| `make k8s-logs p=<service>` | Voir les logs d'un service                      |
+| `make monitoring-install`   | Installer Prometheus + Grafana + AlertManager   |
 
 ### Developpement
 
@@ -277,14 +291,15 @@ npm run lint             # ESLint
 
 ## Acces aux services
 
-| Service               | URL                   | Description           |
-|-----------------------|-----------------------|-----------------------|
-| **Frontend**          | http://localhost:3000 | Interface utilisateur |
-| **API Gateway**       | http://localhost:8000 | Point d'entree API    |
-| **Keycloak**          | http://localhost:8080 | Console admin         |
-| **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik    |
-| **Grafana**           | http://localhost:3001 | Dashboards            |
-| **Prometheus**        | http://localhost:9090 | Metriques             |
+| Service               | URL                   | Description               |
+|-----------------------|-----------------------|---------------------------|
+| **Frontend**          | http://localhost:3000 | Interface utilisateur     |
+| **API Gateway**       | http://localhost:8000 | Point d'entree API        |
+| **Keycloak**          | http://localhost:8080 | Console admin             |
+| **Traefik Dashboard** | http://localhost:8001 | Monitoring Traefik        |
+| **Grafana**           | http://localhost:3001 | Dashboards (admin/admin)  |
+| **Prometheus**        | http://localhost:9090 | Metriques                 |
+| **AlertManager**      | http://localhost:9093 | Gestion des alertes       |
 
 ---
 
@@ -368,19 +383,31 @@ cd article-service && composer test:setup
 
 ## Monitoring & Observability
 
-Le monitoring est deploye via Kubernetes. Les manifests se trouvent dans `k8s/monitoring.yaml`.
+Le monitoring est deploye via **kube-prometheus-stack** (Helm) et inclut Prometheus, Grafana et AlertManager.
 
 ### Services
 
-| Service        | Description                               |
-|----------------|-------------------------------------------|
-| **Grafana**    | Visualisation des metriques et dashboards |
-| **Prometheus** | Collecte et stockage des metriques        |
+| Service          | URL                   | Description                               |
+|------------------|-----------------------|-------------------------------------------|
+| **Grafana**      | http://localhost:3001 | Visualisation des metriques (admin/admin) |
+| **Prometheus**   | http://localhost:9090 | Collecte et stockage des metriques        |
+| **AlertManager** | http://localhost:9093 | Gestion des alertes                       |
+
+### Alertes pre-configurees
+
+| Alerte             | Condition                          | Severite |
+|--------------------|------------------------------------|----------|
+| `HighErrorRate`    | Taux d'erreur 5xx > 1% pendant 2m  | critical |
+| `HighLatency`      | P99 latence > 1s pendant 5m        | warning  |
+| `ServiceDown`      | Traefik ou Article-service down    | critical |
+| `NoTraffic`        | Aucun trafic pendant 10m           | warning  |
+| `PodFrequentRestart` | Pod redemarre > 3 fois/heure     | warning  |
 
 ### Configuration
 
+- **Values Helm** : `k8s/prometheus-stack/values.yaml`
 - **Dashboards Grafana** : `k8s/grafana-dashboards/`
-- **Manifests Kubernetes** : `k8s/monitoring.yaml`
+- **Installation** : `make monitoring-install` (inclus dans `make k8s-up`)
 
 ---
 

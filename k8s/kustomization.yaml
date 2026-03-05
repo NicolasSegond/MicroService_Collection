@@ -9,16 +9,6 @@ resources:
   - auth.yaml
   - services.yaml
   - gateway.yaml
-  - monitoring.yaml
-
-# Génère les ConfigMaps depuis les fichiers existants
-configMapGenerator:
-  - name: grafana-dashboards
-    files:
-      - grafana-dashboards/microservices_dashboard.json
-
-generatorOptions:
-  disableNameSuffixHash: true
 
 labels:
   - pairs:
