@@ -1,5 +1,9 @@
 # Changelog—MicroService Collection
 
+## v1.0.8 - 05-03-2026
+
+- modify workflow dependencies
+
 ## v1.0.7 - 05-03-2026
 
 - add kube-prometheus-stack for monitoring and alerting in Kubernetes cluster

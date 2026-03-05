@@ -237,6 +237,7 @@ jobs:
   zap-local:
     name: Security • ZAP Scan (Local)
     runs-on: ubuntu-latest
+    needs: [backend, frontend]
 
     steps:
       - name: Checkout repository
@@ -330,7 +331,7 @@ jobs:
   build:
     name: Build • Docker Images (ghcr.io)
     runs-on: ubuntu-latest
-    needs: [sonarcloud]
+    needs: [sonarcloud, perf_tests, zap-local, gitleaks]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     permissions:
