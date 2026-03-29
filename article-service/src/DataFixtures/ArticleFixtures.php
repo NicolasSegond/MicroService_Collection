@@ -84,7 +84,6 @@ class ArticleFixtures extends Fixture implements DependentFixtureInterface
 
         $items = self::COLLECTION_ITEMS;
 
-        // On crée quelques articles
         for ($i = 0; $i < 15; $i++) {
             $itemModel = $items[$i % count($items)];
 

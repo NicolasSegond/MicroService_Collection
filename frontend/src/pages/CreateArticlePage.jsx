@@ -192,7 +192,6 @@ const CreateArticlePage = () => {
                         </div>
                     )}
 
-                    {/* Image Upload */}
                     <div className="form-section">
                         <label className="form-label">
                             <ImagePlus size={18} />
@@ -242,7 +241,6 @@ const CreateArticlePage = () => {
                         </div>
                     </div>
 
-                    {/* Title */}
                     <div className="form-section">
                         <label className="form-label" htmlFor="title">
                             <Tag size={18} />
@@ -262,7 +260,6 @@ const CreateArticlePage = () => {
                         <span className="input-hint">{formData.title.length}/100 caractères</span>
                     </div>
 
-                    {/* Price */}
                     <div className="form-section">
                         <label className="form-label" htmlFor="price">
                             <Euro size={18} />
@@ -305,7 +302,6 @@ const CreateArticlePage = () => {
                         </div>
                     </div>
 
-                    {/* Description */}
                     <div className="form-section">
                         <label className="form-label" htmlFor="description">
                             <FileText size={18} />
@@ -326,7 +322,6 @@ const CreateArticlePage = () => {
                         <span className="input-hint">{formData.description.length}/2000 caractères</span>
                     </div>
 
-                    {/* Actions */}
                     <div className="form-actions">
                         <button
                             type="button"

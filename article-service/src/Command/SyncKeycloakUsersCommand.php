@@ -35,14 +35,12 @@ class SyncKeycloakUsersCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $io->title('Syncing Keycloak users');
 
-        // Get admin token
         $token = $this->getAdminToken();
         if (!$token) {
             $io->error('Failed to get admin token');
             return Command::FAILURE;
         }
 
-        // Fetch users from Keycloak
         $users = $this->fetchUsers($token);
         $io->info(sprintf('Found %d users in Keycloak', count($users)));
 

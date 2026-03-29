@@ -100,7 +100,6 @@ const ArticleDetailPage = () => {
             keycloak?.login();
             return;
         }
-        // TODO: Implement messaging
         alert('Fonctionnalité de messagerie à venir');
     };
 
