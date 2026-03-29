@@ -1,5 +1,10 @@
 # Changelog—MicroService Collection
 
+## v1.0.9 - 29-03-2026
+
+- Fix npm audit vulnerabilities (peer dependencies update)
+- Remove unnecessary comments and dead code cleanup
+
 ## v1.0.8 - 05-03-2026
 
 - modify workflow dependencies
