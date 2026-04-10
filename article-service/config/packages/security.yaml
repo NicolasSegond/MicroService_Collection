@@ -10,6 +10,9 @@ security:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        health:
+            pattern: ^/health$
+            security: false
         api:
             pattern: ^/api
             stateless: true

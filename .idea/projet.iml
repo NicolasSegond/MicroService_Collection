@@ -196,6 +196,9 @@
       <excludeFolder url="file://$MODULE_DIR$/user-service/vendor/twig/twig" />
       <excludeFolder url="file://$MODULE_DIR$/user-service/vendor/webmozart/assert" />
       <excludeFolder url="file://$MODULE_DIR$/user-service/vendor/willdurand/negotiation" />
+      <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/symfony/lock" />
+      <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/symfony/options-resolver" />
+      <excludeFolder url="file://$MODULE_DIR$/article-service/vendor/symfony/rate-limiter" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
