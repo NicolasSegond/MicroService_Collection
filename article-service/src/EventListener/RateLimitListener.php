@@ -6,13 +6,13 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 20)]
 class RateLimitListener
 {
     public function __construct(
-        private readonly RateLimiterFactory $apiGlobalLimiter,
+        private readonly RateLimiterFactoryInterface $apiGlobalLimiter,
     ) {}
 
     public function __invoke(RequestEvent $event): void

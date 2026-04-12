@@ -10,7 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\String\Slugger\SluggerInterface;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 #[IsGranted('ROLE_USER')]
 class UploadController extends AbstractController
@@ -25,7 +25,7 @@ class UploadController extends AbstractController
     private const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
     #[Route('/api/media/upload', name: 'api_media_upload', methods: ['POST'])]
-    public function upload(Request $request, SluggerInterface $slugger, RateLimiterFactory $apiUploadLimiter): JsonResponse
+    public function upload(Request $request, SluggerInterface $slugger, RateLimiterFactoryInterface $apiUploadLimiter): JsonResponse
     {
         $limiter = $apiUploadLimiter->create($request->getClientIp());
         $limit = $limiter->consume();

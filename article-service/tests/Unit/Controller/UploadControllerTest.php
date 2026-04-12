@@ -9,6 +9,9 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimit;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\String\Slugger\SluggerInterface;
 use Symfony\Component\String\UnicodeString;
 
@@ -59,6 +62,20 @@ class UploadControllerTest extends TestCase
         return $slugger;
     }
 
+    private function createRateLimiterFactory(bool $accepted = true): RateLimiterFactoryInterface
+    {
+        $rateLimit = $this->createStub(RateLimit::class);
+        $rateLimit->method('isAccepted')->willReturn($accepted);
+
+        $limiter = $this->createStub(LimiterInterface::class);
+        $limiter->method('consume')->willReturn($rateLimit);
+
+        $factory = $this->createStub(RateLimiterFactoryInterface::class);
+        $factory->method('create')->willReturn($limiter);
+
+        return $factory;
+    }
+
     public function testUploadReturnsErrorIfNoFileProvided(): void
     {
         $controller = new UploadController();
@@ -67,7 +84,7 @@ class UploadControllerTest extends TestCase
         $request = new Request();
         $slugger = $this->createStub(SluggerInterface::class);
 
-        $response = $controller->upload($request, $slugger);
+        $response = $controller->upload($request, $slugger, $this->createRateLimiterFactory());
 
         $this->assertEquals(400, $response->getStatusCode());
         $content = json_decode($response->getContent(), true);
@@ -94,7 +111,7 @@ class UploadControllerTest extends TestCase
         $request = new Request();
         $request->files->set('file', $file);
 
-        $response = $controller->upload($request, $slugger);
+        $response = $controller->upload($request, $slugger, $this->createRateLimiterFactory());
 
         $this->assertEquals(200, $response->getStatusCode());
         $content = json_decode($response->getContent(), true);
@@ -119,7 +136,7 @@ class UploadControllerTest extends TestCase
         $request = new Request();
         $request->files->set('file', $file);
 
-        $response = $controller->upload($request, $slugger);
+        $response = $controller->upload($request, $slugger, $this->createRateLimiterFactory());
 
         $this->assertEquals(500, $response->getStatusCode());
         $content = json_decode($response->getContent(), true);
