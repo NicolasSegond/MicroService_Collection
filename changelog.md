@@ -1,5 +1,12 @@
 # Changelog—MicroService Collection
 
+## v1.1.0 - 12-04-2026
+
+- Health check endpoint for article-service (`/health`)
+- Rate limiting (sliding window) on API endpoints: global 100 req/min, upload 20 req/min, article creation 10 req/min
+- Fix frontend vulnerability dependencies
+- Use `RateLimiterFactoryInterface` instead of deprecated `RateLimiterFactory`
+
 ## v1.0.9 - 29-03-2026
 
 - Fix npm audit vulnerabilities (peer dependencies update)
