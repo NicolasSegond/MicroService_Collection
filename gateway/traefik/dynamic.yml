@@ -165,7 +165,7 @@ http:
         - web
       middlewares:
         - public-chain
-      service: ping@internal
+      service: article-service
 
   # ============================================
   # SERVICES

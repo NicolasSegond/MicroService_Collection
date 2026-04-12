@@ -8,6 +8,25 @@ framework:
     #esi: true
     #fragments: true
 
+    rate_limiter:
+        # Limite globale par IP pour les endpoints API
+        api_global:
+            policy: sliding_window
+            limit: 100
+            interval: '1 minute'
+
+        # Limite stricte pour la création d'articles
+        api_create_article:
+            policy: sliding_window
+            limit: 10
+            interval: '1 minute'
+
+        # Limite stricte pour l'upload de fichiers
+        api_upload:
+            policy: sliding_window
+            limit: 20
+            interval: '1 minute'
+
 when@test:
     framework:
         test: true

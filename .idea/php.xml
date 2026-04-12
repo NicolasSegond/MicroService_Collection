@@ -239,6 +239,9 @@
       <path value="$PROJECT_DIR$/article-service/vendor/symfony/dom-crawler" />
       <path value="$PROJECT_DIR$/article-service/vendor/symfony/http-client" />
       <path value="$PROJECT_DIR$/article-service/vendor/symfony/type-info" />
+      <path value="$PROJECT_DIR$/article-service/vendor/symfony/rate-limiter" />
+      <path value="$PROJECT_DIR$/article-service/vendor/symfony/lock" />
+      <path value="$PROJECT_DIR$/article-service/vendor/symfony/options-resolver" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2">
