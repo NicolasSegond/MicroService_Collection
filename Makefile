@@ -2,8 +2,8 @@
 
 SHELL := /bin/bash
 
-.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-update k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward build-images \
-        demo-crash demo-scale monitoring-install traffic
+.PHONY: help dev dev-down dev-logs dev-clean k8s-up k8s-update k8s-restart k8s-stop k8s-delete k8s-status k8s-logs k8s-forward k8s-sync build-images \
+        demo-crash demo-scale demo-autoscale monitoring-install traffic
 
 CYAN := \033[36m
 GREEN := \033[32m
@@ -32,6 +32,7 @@ help: ## Affiche cette aide
 	@echo -e "     $(CYAN)make k8s-update$(RESET)    Rebuild + redéploie (après modif code/assets)"
 	@echo -e "     $(CYAN)make k8s-restart$(RESET)   Redémarre le cluster"
 	@echo -e "     $(CYAN)make k8s-forward$(RESET)   Ouvre les ports"
+	@echo -e "     $(CYAN)make k8s-sync$(RESET)      Sync kubeconfig → Windows (OpenLens)"
 	@echo -e "     $(CYAN)make k8s-stop$(RESET)      Arrête"
 	@echo -e "     $(CYAN)make k8s-delete$(RESET)    Supprime tout"
 	@echo -e "     $(CYAN)make k8s-status$(RESET)    État des pods"
@@ -41,8 +42,9 @@ help: ## Affiche cette aide
 	@echo -e "$(GREEN)  DEMOS K8S$(RESET)"
 	@echo -e "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
 	@echo -e ""
-	@echo -e "     $(CYAN)make demo-crash$(RESET)    Auto-healing (kill + watch rebuild)"
-	@echo -e "     $(CYAN)make demo-scale$(RESET)    Scalabilité (make demo-scale r=3)"
+	@echo -e "     $(CYAN)make demo-crash$(RESET)        Auto-healing (kill + watch rebuild)"
+	@echo -e "     $(CYAN)make demo-scale$(RESET)        Scalabilité manuelle (make demo-scale r=3)"
+	@echo -e "     $(CYAN)make demo-autoscale$(RESET)    Autoscaling HPA + JMeter (make demo-autoscale t=200 d=120)"
 	@echo -e ""
 	@echo -e "$(GREEN)══════════════════════════════════════════════════════════════$(RESET)"
 	@echo -e "$(GREEN)  MONITORING$(RESET)"
@@ -91,26 +93,28 @@ k8s-up:
 	@echo -e ""
 	@echo -e "$(BOLD)$(CYAN)═══ INSTALLATION KUBERNETES ═══$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[1/5]$(RESET) Création du cluster..."
-	@minikube start --cpus=2 --memory=4192 --driver=docker --container-runtime=containerd
+	@echo -e "$(YELLOW)[1/6]$(RESET) Création du cluster..."
+	@minikube start --cpus=2 --memory=4192 --driver=docker --container-runtime=containerd --listen-address=0.0.0.0
 	@minikube addons enable ingress >/dev/null 2>&1
 	@minikube addons enable metrics-server >/dev/null 2>&1
+	@kubectl patch deployment metrics-server -n kube-system --type='json' \
+		-p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--metric-resolution=15s"}]' >/dev/null 2>&1 || true
 	@echo -e "$(GREEN)  ✓ Cluster créé$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[2/5]$(RESET) Build des images..."
+	@echo -e "$(YELLOW)[2/6]$(RESET) Build des images..."
 	@$(MAKE) --no-print-directory build-images
 	@echo -e "$(GREEN)  ✓ Images OK$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[3/5]$(RESET) Déploiement application..."
+	@echo -e "$(YELLOW)[3/6]$(RESET) Déploiement application..."
 	@kubectl create namespace marketplace --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create secret generic app-secrets --from-env-file=.env -n marketplace --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl apply -k k8s/ >/dev/null
 	@echo -e "$(GREEN)  ✓ Application déployée$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[4/5]$(RESET) Installation monitoring..."
+	@echo -e "$(YELLOW)[4/6]$(RESET) Installation monitoring..."
 	@$(MAKE) --no-print-directory monitoring-install
 	@echo -e ""
-	@echo -e "$(YELLOW)[5/5]$(RESET) Attente des services (parallèle)..."
+	@echo -e "$(YELLOW)[5/6]$(RESET) Attente des services (parallèle)..."
 	@( kubectl wait --for=condition=ready pod -l app=keycloak -n marketplace --timeout=120s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Keycloak$(RESET)" || echo -e "$(RED)  ✗ Keycloak$(RESET)" ) & \
 	( kubectl wait --for=condition=ready pod -l app=article-service -n marketplace --timeout=120s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Article Service$(RESET)" || echo -e "$(RED)  ✗ Article Service$(RESET)" ) & \
 	( kubectl wait --for=condition=ready pod -l app=frontend -n marketplace --timeout=60s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Frontend$(RESET)" || echo -e "$(RED)  ✗ Frontend$(RESET)" ) & \
@@ -119,6 +123,9 @@ k8s-up:
 	( kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=alertmanager -n monitoring --timeout=30s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ AlertManager$(RESET)" || echo -e "$(RED)  ✗ AlertManager$(RESET)" ) & \
 	wait
 	@echo -e ""
+	@echo -e "$(YELLOW)[6/6]$(RESET) Sync kubeconfig pour OpenLens..."
+	@$(MAKE) --no-print-directory k8s-sync
+	@echo -e ""
 	@echo -e "$(BOLD)$(GREEN)═══ PRÊT ! ═══$(RESET)"
 	@echo -e "Lancez: $(CYAN)make k8s-forward$(RESET)"
 
@@ -126,14 +133,17 @@ k8s-restart:
 	@echo -e ""
 	@echo -e "$(BOLD)$(CYAN)═══ REDÉMARRAGE KUBERNETES ═══$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[1/2]$(RESET) Démarrage de Minikube..."
-	@minikube start
+	@echo -e "$(YELLOW)[1/3]$(RESET) Démarrage de Minikube..."
+	@minikube start --listen-address=0.0.0.0
 	@echo -e "$(GREEN)  ✓ Cluster démarré$(RESET)"
 	@echo -e ""
-	@echo -e "$(YELLOW)[2/2]$(RESET) Attente des pods..."
+	@echo -e "$(YELLOW)[2/3]$(RESET) Attente des pods..."
 	@kubectl wait --for=condition=ready pod -l app=keycloak -n marketplace --timeout=300s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Keycloak$(RESET)" || echo -e "$(RED)  ✗ Keycloak$(RESET)"
 	@kubectl wait --for=condition=ready pod -l app=article-service -n marketplace --timeout=180s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Article Service$(RESET)" || echo -e "$(RED)  ✗ Article Service$(RESET)"
 	@kubectl wait --for=condition=ready pod -l app=frontend -n marketplace --timeout=180s >/dev/null 2>&1 && echo -e "$(GREEN)  ✓ Frontend$(RESET)" || echo -e "$(RED)  ✗ Frontend$(RESET)"
+	@echo -e ""
+	@echo -e "$(YELLOW)[3/3]$(RESET) Sync kubeconfig pour OpenLens..."
+	@$(MAKE) --no-print-directory k8s-sync
 	@echo -e ""
 	@echo -e "$(BOLD)$(GREEN)═══ PRÊT ! ═══$(RESET)"
 	@echo -e "Lancez: $(CYAN)make k8s-forward$(RESET)"
@@ -164,6 +174,9 @@ k8s-delete:
 
 k8s-forward:
 	@chmod +x ./k8s/scripts/k8s-forward.sh && ./k8s/scripts/k8s-forward.sh
+
+k8s-sync:
+	@chmod +x ./k8s/scripts/k8s-sync.sh && ./k8s/scripts/k8s-sync.sh
 
 k8s-status:
 	@kubectl get pods -n marketplace
@@ -211,6 +224,25 @@ demo-scale: ## Démo scalabilité : scale article-service (make demo-scale r=3)
 	echo -e "" && \
 	echo -e "$(YELLOW)Watch scaling (Ctrl+C pour quitter):$(RESET)" && \
 	kubectl get pods -n marketplace -l app=article-service -w
+
+demo-autoscale: ## Démo autoscaling HPA avec JMeter (make demo-autoscale t=200 d=120)
+	@THREADS=$${t:-200} && \
+	DURATION=$${d:-120} && \
+	RAMPUP=$${r:-10} && \
+	rm -f /tmp/jmeter-results.jtl && \
+	echo -e "" && \
+	echo -e "$(BOLD)$(CYAN)══════════════════════════════════════════════════════════════$(RESET)" && \
+	echo -e "$(BOLD)$(CYAN)                    DEMO AUTOSCALING HPA                      $(RESET)" && \
+	echo -e "$(BOLD)$(CYAN)══════════════════════════════════════════════════════════════$(RESET)" && \
+	echo -e "" && \
+	echo -e "  $(CYAN)Utilisateurs :$(RESET)  $$THREADS" && \
+	echo -e "  $(CYAN)Montée :$(RESET)        $$RAMPUP s" && \
+	echo -e "  $(CYAN)Durée :$(RESET)         $$DURATION s" && \
+	echo -e "  $(CYAN)Cible :$(RESET)         GET localhost:8082/api/articles" && \
+	echo -e "" && \
+	echo -e "  $(YELLOW)▶ Lancement JMeter...$(RESET)" && \
+	echo -e "" && \
+	/mnt/c/apache-jmeter-5.6.3/bin/jmeter.sh -n -t "$$(pwd)/k8s/scripts/load-test.jmx" -Jhost=localhost -Jport=8082 -Jthreads=$$THREADS -Jduration=$$DURATION -Jrampup=$$RAMPUP -l /tmp/jmeter-results.jtl
 
 # ============================================
 # MONITORING (kube-prometheus-stack)

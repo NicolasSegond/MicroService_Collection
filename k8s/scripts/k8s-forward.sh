@@ -12,24 +12,33 @@ pkill -f "kubectl port-forward -n monitoring" 2>/dev/null
 
 echo -e "${GREEN}Lancement des port-forwards...${RESET}"
 
+# Auto-restart : relance automatiquement si ça crash
+auto_forward() {
+  local namespace=$1 service=$2 ports=$3
+  while true; do
+    kubectl port-forward -n "$namespace" "svc/$service" --address 0.0.0.0 $ports 2>/dev/null
+    sleep 1
+  done
+}
+
 # Application (namespace: marketplace)
-kubectl port-forward -n marketplace svc/frontend 3000:3000 &
-kubectl port-forward -n marketplace svc/traefik 8000:80 8001:8080 &
-kubectl port-forward -n marketplace svc/article-service 8082:8000 &
-kubectl port-forward -n marketplace svc/article-db 5432:5432 &
-kubectl port-forward -n marketplace svc/keycloak 8080:8080 &
-kubectl port-forward -n marketplace svc/kafka-ui 8090:8080 &
+auto_forward marketplace frontend        3000:3000 &
+auto_forward marketplace traefik         "8000:80 8001:8080" &
+auto_forward marketplace article-service 8082:8000 &
+auto_forward marketplace article-db      5432:5432 &
+auto_forward marketplace keycloak        8080:8080 &
+auto_forward marketplace kafka-ui        8090:8080 &
 
 # Monitoring (namespace: monitoring)
-kubectl port-forward -n monitoring svc/prometheus-stack-grafana 3001:80 &
-kubectl port-forward -n monitoring svc/prometheus-prometheus 9090:9090 &
-kubectl port-forward -n monitoring svc/prometheus-alertmanager 9093:9093 &
+auto_forward monitoring prometheus-stack-grafana 3001:80 &
+auto_forward monitoring prometheus-prometheus    9090:9090 &
+auto_forward monitoring prometheus-alertmanager  9093:9093 &
 
 sleep 2
 
 echo ""
 echo -e "${GREEN}========================================${RESET}"
-echo -e "${GREEN}   Port-forwards actifs !${RESET}"
+echo -e "${GREEN}   Port-forwards actifs (auto-restart) !${RESET}"
 echo -e "${GREEN}========================================${RESET}"
 echo ""
 echo -e "  ${CYAN}Frontend:${RESET}       http://localhost:3000"

@@ -118,8 +118,10 @@ metadata:
     app.kubernetes.io/name: article-service
     app.kubernetes.io/component: backend
 spec:
+  type: NodePort
   ports:
     - port: 8000
+      nodePort: 30082
       name: http
   selector:
     app: article-service
@@ -217,10 +219,12 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: KEYCLOAK_ADMIN_PASSWORD
+            - name: RATE_LIMIT_ENABLED
+              value: "false"
           resources:
             requests:
               memory: "256Mi"
-              cpu: "250m"
+              cpu: "200m"
             limits:
               memory: "512Mi"
               cpu: "500m"
@@ -228,14 +232,14 @@ spec:
             httpGet:
               path: /api
               port: 8000
-            failureThreshold: 30
+            failureThreshold: 15
             periodSeconds: 2
           readinessProbe:
             httpGet:
               path: /api
               port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 2
+            periodSeconds: 3
           livenessProbe:
             httpGet:
               path: /api
@@ -249,6 +253,51 @@ spec:
         - name: uploads
           persistentVolumeClaim:
             claimName: article-uploads-pvc
+---
+# ============================================
+# ARTICLE SERVICE - AUTOSCALING (HPA)
+# ============================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: article-service-hpa
+  labels:
+    app: article-service
+    app.kubernetes.io/name: article-service
+    app.kubernetes.io/component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: article-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 30
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30
 ---
 # ============================================
 # ARTICLE SERVICE CONSUMER (Kafka)

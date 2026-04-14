@@ -29,7 +29,16 @@ RUN apk del .build-deps
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf
+RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf && \
+    { \
+      echo '[www]'; \
+      echo 'pm = dynamic'; \
+      echo 'pm.max_children = 50'; \
+      echo 'pm.start_servers = 10'; \
+      echo 'pm.min_spare_servers = 5'; \
+      echo 'pm.max_spare_servers = 15'; \
+      echo 'pm.max_requests = 500'; \
+    } > /usr/local/etc/php-fpm.d/zz-pool.conf
 
 WORKDIR /app
 
@@ -73,6 +82,15 @@ FROM base AS minikube
 ENV APP_ENV=dev
 
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+
+# OPcache optimise pour K8s (le code ne change pas dans le container)
+RUN { \
+      echo 'opcache.enable=1'; \
+      echo 'opcache.memory_consumption=128'; \
+      echo 'opcache.max_accelerated_files=10000'; \
+      echo 'opcache.validate_timestamps=0'; \
+      echo 'opcache.interned_strings_buffer=16'; \
+    } > "$PHP_INI_DIR/conf.d/opcache-k8s.ini"
 
 COPY composer.json composer.lock symfony.lock ./
 

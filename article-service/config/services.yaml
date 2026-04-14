@@ -8,6 +8,7 @@ parameters:
     kafka.topic.keycloak: '%env(default:kafka.topic.keycloak.default:KAFKA_TOPIC_KEYCLOAK)%'
     kafka.topic.keycloak.default: 'keycloak-events'
     keycloak.realm.default: 'collector_realms'
+    rate_limit.default: 'true'
 
 services:
     # default configuration for services in *this* file
@@ -22,6 +23,10 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\EventListener\RateLimitListener:
+        arguments:
+            $rateLimitEnabled: '%env(default:rate_limit.default:RATE_LIMIT_ENABLED)%'
 
     App\Command\ConsumeKeycloakEventsCommand:
         arguments:

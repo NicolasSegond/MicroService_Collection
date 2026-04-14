@@ -13,10 +13,15 @@ class RateLimitListener
 {
     public function __construct(
         private readonly RateLimiterFactoryInterface $apiGlobalLimiter,
+        private readonly string $rateLimitEnabled = 'true',
     ) {}
 
     public function __invoke(RequestEvent $event): void
     {
+        if ($this->rateLimitEnabled !== 'true') {
+            return;
+        }
+
         if (!$event->isMainRequest()) {
             return;
         }
