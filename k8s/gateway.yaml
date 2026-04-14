@@ -335,6 +335,8 @@ spec:
           volumeMounts:
             - name: traefik-config
               mountPath: /etc/traefik
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               memory: "64Mi"
@@ -358,6 +360,8 @@ spec:
         - name: traefik-config
           configMap:
             name: traefik-config
+        - name: tmp
+          emptyDir: {}
 ---
 # ============================================
 # OATHKEEPER SERVICE

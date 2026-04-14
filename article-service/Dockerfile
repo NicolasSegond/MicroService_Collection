@@ -29,6 +29,8 @@ RUN apk del .build-deps
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+RUN printf 'upload_max_filesize = 6M\npost_max_size = 7M\n' > "$PHP_INI_DIR/conf.d/uploads.ini"
+
 RUN echo 'listen = 127.0.0.1:9000' >> /usr/local/etc/php-fpm.d/www.conf && \
     { \
       echo '[www]'; \
@@ -84,13 +86,7 @@ ENV APP_ENV=dev
 RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 # OPcache optimise pour K8s (le code ne change pas dans le container)
-RUN { \
-      echo 'opcache.enable=1'; \
-      echo 'opcache.memory_consumption=128'; \
-      echo 'opcache.max_accelerated_files=10000'; \
-      echo 'opcache.validate_timestamps=0'; \
-      echo 'opcache.interned_strings_buffer=16'; \
-    } > "$PHP_INI_DIR/conf.d/opcache-k8s.ini"
+RUN printf 'opcache.enable=1\nopcache.memory_consumption=128\nopcache.max_accelerated_files=10000\nopcache.validate_timestamps=0\nopcache.interned_strings_buffer=16\n' > "$PHP_INI_DIR/conf.d/opcache-k8s.ini"
 
 COPY composer.json composer.lock symfony.lock ./
 
