@@ -293,11 +293,11 @@ spec:
           value: 1
           periodSeconds: 15
     scaleDown:
-      stabilizationWindowSeconds: 300
+      stabilizationWindowSeconds: 30
       policies:
         - type: Pods
           value: 1
-          periodSeconds: 60
+          periodSeconds: 15
 ---
 # ============================================
 # ARTICLE SERVICE CONSUMER (Kafka)
