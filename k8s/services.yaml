@@ -223,10 +223,10 @@ spec:
               value: "false"
           resources:
             requests:
-              memory: "256Mi"
-              cpu: "200m"
-            limits:
               memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "768Mi"
               cpu: "500m"
           startupProbe:
             httpGet:
@@ -271,33 +271,33 @@ spec:
     kind: Deployment
     name: article-service
   minReplicas: 1
-  maxReplicas: 10
+  maxReplicas: 5
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 30
+          averageUtilization: 50
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 50
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 0
       policies:
         - type: Pods
-          value: 4
+          value: 1
           periodSeconds: 15
     scaleDown:
-      stabilizationWindowSeconds: 60
+      stabilizationWindowSeconds: 300
       policies:
         - type: Pods
-          value: 2
-          periodSeconds: 30
+          value: 1
+          periodSeconds: 60
 ---
 # ============================================
 # ARTICLE SERVICE CONSUMER (Kafka)
